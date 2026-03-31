@@ -8,7 +8,10 @@ import type {
   ImageSettings,
 } from '@/types/manuscript'
 
+export type ManuscriptMode = 'brand' | 'thirdparty'
+
 export interface GenerateSettings {
+  manuscriptMode: ManuscriptMode
   brandId: string
   category: ManuscriptCategory | ''
   typeId: string
@@ -52,6 +55,7 @@ interface GenerateState {
 }
 
 const defaultSettings: GenerateSettings = {
+  manuscriptMode: 'thirdparty',
   brandId: '',
   category: '',
   typeId: '',

@@ -13,7 +13,7 @@ import { Separator } from '@/components/ui/separator'
 import { Progress } from '@/components/ui/progress'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { getBrands, getOpenProhibitions, createManuscript } from '@/lib/firebase/collections'
-import { CATEGORIES } from '@/lib/layers/categories'
+import { CATEGORIES, BRAND_CATEGORIES, THIRD_PARTY_BLOCKED, BRAND_BLOCKED } from '@/lib/layers/categories'
 import { getTypesByCategory } from '@/lib/layers/types'
 import { MEDICAL_MATERIAL_CATEGORIES, NON_MEDICAL_MATERIAL_CATEGORIES } from '@/lib/layers/materials'
 import { VAR7_CONTENT_LENGTH } from '@/lib/layers/personas'
@@ -148,6 +148,7 @@ export default function GeneratePage() {
               title: data.title, body: data.body, brandName: brand!.name, openProhibitions,
               wordCountMin: (data.resolvedSettings.wordCount as { min: number }).min,
               wordCountMax: (data.resolvedSettings.wordCount as { max: number }).max,
+              manuscriptMode: settings.manuscriptMode,
             }),
           })
           reviewResult = await reviewRes.json()
@@ -341,6 +342,41 @@ export default function GeneratePage() {
         </CardContent>
       </Card>
 
+      {/* 원고 모드 선택 */}
+      <Card className="border-0 shadow-sm">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-semibold text-gray-700">원고 모드</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => updateSettings({ manuscriptMode: 'thirdparty', category: '', typeId: '' })}
+              className={`p-4 rounded-xl border-2 text-left transition-all ${
+                settings.manuscriptMode === 'thirdparty'
+                  ? 'border-blue-500 bg-blue-50'
+                  : 'border-gray-200 hover:border-gray-300'
+              }`}
+            >
+              <p className="font-bold text-sm text-gray-900">제3자 원고</p>
+              <p className="text-xs text-gray-500 mt-1">일반인이 쓴 글처럼</p>
+              <p className="text-[10px] text-gray-400 mt-0.5">6개 카테고리 × 78개 유형</p>
+            </button>
+            <button
+              onClick={() => updateSettings({ manuscriptMode: 'brand', category: '', typeId: '' })}
+              className={`p-4 rounded-xl border-2 text-left transition-all ${
+                settings.manuscriptMode === 'brand'
+                  ? 'border-blue-500 bg-blue-50'
+                  : 'border-gray-200 hover:border-gray-300'
+              }`}
+            >
+              <p className="font-bold text-sm text-gray-900">브랜드 원고</p>
+              <p className="text-xs text-gray-500 mt-1">브랜드 공식 입장으로</p>
+              <p className="text-[10px] text-gray-400 mt-0.5">5개 카테고리 (정보/이슈/분석/후기/환급)</p>
+            </button>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* 카테고리 + 유형 */}
       <Card>
         <CardHeader className="pb-3">
@@ -361,7 +397,7 @@ export default function GeneratePage() {
               >
                 랜덤
               </button>
-              {CATEGORIES.map((cat) => (
+              {(settings.manuscriptMode === 'brand' ? BRAND_CATEGORIES : CATEGORIES).map((cat) => (
                 <button
                   key={cat.id}
                   onClick={() => handleCategoryChange(cat.id)}
@@ -371,7 +407,7 @@ export default function GeneratePage() {
                       : 'border-gray-300 text-gray-600 hover:border-blue-300'
                   }`}
                 >
-                  {cat.id}. {cat.name}
+                  {cat.name}
                   <span className="text-xs ml-1 opacity-70">({cat.typeCount})</span>
                 </button>
               ))}

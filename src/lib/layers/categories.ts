@@ -52,3 +52,55 @@ export const CATEGORIES: Category[] = [
 ]
 
 export const CATEGORY_MAP = Object.fromEntries(CATEGORIES.map((c) => [c.id, c]))
+
+// 브랜드 원고 전용 카테고리
+export const BRAND_CATEGORIES: Category[] = [
+  {
+    id: 'B',
+    name: '정보형',
+    typeCount: 15,
+    coreHook: '알려드림',
+    brandExposure: 'strong',
+    role: '공식 안내',
+  },
+  {
+    id: 'D',
+    name: '이슈형',
+    typeCount: 7,
+    coreHook: '업계 소식',
+    brandExposure: 'strong',
+    role: '업계 소식',
+  },
+  {
+    id: 'F',
+    name: '심층분석형',
+    typeCount: 10,
+    coreHook: '전문 분석',
+    brandExposure: 'strong',
+    role: '전문성',
+  },
+  {
+    id: 'G',
+    name: '고객후기 사례',
+    typeCount: 5,
+    coreHook: '고객님 사례',
+    brandExposure: 'strong',
+    role: '신뢰·공감',
+  },
+  {
+    id: 'H',
+    name: '환급 과정',
+    typeCount: 5,
+    coreHook: '이렇게 받았어요',
+    brandExposure: 'strong',
+    role: '전환 유도',
+  },
+]
+
+export const BRAND_CATEGORY_MAP = Object.fromEntries(BRAND_CATEGORIES.map((c) => [c.id, c]))
+
+// 제3자 원고에서 사용 불가 카테고리
+export const THIRD_PARTY_BLOCKED = ['G', 'H']
+
+// 브랜드 원고에서 사용 불가 카테고리
+export const BRAND_BLOCKED = ['A', 'C', 'E']

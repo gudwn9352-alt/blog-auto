@@ -92,8 +92,26 @@ export const MANUSCRIPT_TYPES: ManuscriptType[] = [
   { id: 'F-10', categoryId: 'F', index: 10, name: '미래 전망형' },
 ]
 
-export const TYPE_MAP = Object.fromEntries(MANUSCRIPT_TYPES.map((t) => [t.id, t]))
+// 브랜드 원고 전용 유형
+export const BRAND_MANUSCRIPT_TYPES: ManuscriptType[] = [
+  // G. 고객후기 사례 (5개)
+  { id: 'G-1', categoryId: 'G', index: 1, name: '성공 사례 소개형' },
+  { id: 'G-2', categoryId: 'G', index: 2, name: '비포애프터형' },
+  { id: 'G-3', categoryId: 'G', index: 3, name: '고객 인터뷰형' },
+  { id: 'G-4', categoryId: 'G', index: 4, name: '숫자로 보는 성과형' },
+  { id: 'G-5', categoryId: 'G', index: 5, name: '감사 후기형' },
+
+  // H. 환급 과정 (5개)
+  { id: 'H-1', categoryId: 'H', index: 1, name: '단계별 과정 공개형' },
+  { id: 'H-2', categoryId: 'H', index: 2, name: '타임라인형' },
+  { id: 'H-3', categoryId: 'H', index: 3, name: '서류 안내형' },
+  { id: 'H-4', categoryId: 'H', index: 4, name: 'Q&A형' },
+  { id: 'H-5', categoryId: 'H', index: 5, name: '꿀팁 모음형' },
+]
+
+export const ALL_TYPES = [...MANUSCRIPT_TYPES, ...BRAND_MANUSCRIPT_TYPES]
+export const TYPE_MAP = Object.fromEntries(ALL_TYPES.map((t) => [t.id, t]))
 
 export function getTypesByCategory(categoryId: string): ManuscriptType[] {
-  return MANUSCRIPT_TYPES.filter((t) => t.categoryId === categoryId)
+  return ALL_TYPES.filter((t) => t.categoryId === categoryId)
 }

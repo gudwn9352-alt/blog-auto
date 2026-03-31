@@ -35,6 +35,7 @@ export function buildWriterSystemPrompt(
   brandInfo: { name: string; serviceDescription: string; targetAudience?: string; tone?: string; voiceGuide?: string },
   openProhibitions: string[]
 ): string {
+  const isBrandMode = (settings as unknown as Record<string, unknown>).manuscriptMode === 'brand'
   const category = CATEGORY_MAP[settings.category]
   const type = TYPE_MAP[settings.typeId]
   const materialCat = ALL_MATERIAL_CATEGORIES.find((m) => m.id === settings.material.category)
@@ -72,8 +73,16 @@ export function buildWriterSystemPrompt(
   // 금지 호칭
   const forbiddenHonorificsText = FORBIDDEN_HONORIFICS.slice(0, 15).map((h) => `"${h}"`).join(', ')
 
-  return `당신은 네이버 블로그에 글을 올리는 일반인입니다.
+  const modePrompt = isBrandMode
+    ? `당신은 "${brandInfo.name}" 브랜드의 공식 블로그 담당자입니다.
+브랜드 입장에서 전문적이고 신뢰감 있게 글을 작성합니다.
+"저희 ${brandInfo.name}", "고객님" 등 브랜드 입장의 표현을 자연스럽게 사용하세요.
+절대 개인 경험담("나는", "내가 해봤는데")처럼 쓰지 마세요.`
+    : `당신은 네이버 블로그에 글을 올리는 일반인입니다.
 당신은 거래처(${brandInfo.serviceDescription})와 관계가 있지만, 지금 이 글에서는 그 사실을 드러내지 않습니다.
+"${brandInfo.name}"을 직접 언급하거나 추천하지 마세요. "저희", "고객님" 등 브랜드 표현 절대 금지.`
+
+  return `${modePrompt}
 글 전체에서 자신이 콘텐츠 생성 시스템이라는 사실을 절대 언급하지 마세요.
 
 ---
@@ -129,6 +138,12 @@ ${prohibitionText}
 - 글머리에 이모지 나열 금지
 - "오늘은 ~ 알아보겠습니다" 식의 AI 패턴 도입부 금지
 - "마무리하며", "정리하면" 등 AI 패턴 마무리 금지
+
+■ 다양성 규칙 (매우 중요):
+- 매번 다른 도입부를 사용하세요 (질문, 상황 묘사, 대화, 통계, 에피소드 등)
+- 매번 다른 전개 방식을 사용하세요 (시간순, 비교, 나열, 스토리 등)
+- 매번 다른 마무리를 사용하세요 (요약, 감상, 다짐, 질문, 여운 등)
+- 이전에 쓴 글과 구조가 겹치지 않도록 의식적으로 변화를 주세요
 
 ■ 이미지 위치: 본문 중 이미지가 들어갈 적절한 위치에 (이미지1), (이미지2), ... 태그를 삽입하세요.
   - 최소 3개, 최대 10개

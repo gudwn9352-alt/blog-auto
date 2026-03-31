@@ -43,11 +43,12 @@ interface ReviewRequest {
   openProhibitions: string[]
   wordCountMin: number
   wordCountMax: number
+  manuscriptMode?: 'brand' | 'thirdparty'
 }
 
 export async function POST(req: Request) {
   try {
-    const { title, body, brandName, openProhibitions, wordCountMin, wordCountMax }: ReviewRequest = await req.json()
+    const { title, body, brandName, openProhibitions, wordCountMin, wordCountMax, manuscriptMode }: ReviewRequest = await req.json()
 
     const fullText = `${title ?? ''}\n${body ?? ''}`
     const issues: Array<{ type: string; detail: string; location?: string }> = []
@@ -98,7 +99,33 @@ export async function POST(req: Request) {
       }
     }
 
-    // 6. 본문 글자수 (공백 제외)
+    // 6. 주체 일관성 체크
+    if (manuscriptMode === 'thirdparty' && brandName) {
+      const thirdPartyViolations = [
+        { pattern: new RegExp(`저희\\s*${brandName}`, 'g'), msg: `제3자 원고에 "저희 ${brandName}" 사용` },
+        { pattern: /고객님|고객분/g, msg: '제3자 원고에 브랜드 입장 표현 "고객님"' },
+        { pattern: new RegExp(`${brandName}에서\\s*(도와|진행|안내)`, 'g'), msg: `제3자 원고에 브랜드 행위 주체 표현` },
+      ]
+      for (const { pattern, msg } of thirdPartyViolations) {
+        if (pattern.test(fullText)) {
+          issues.push({ type: 'mode_violation', detail: msg })
+        }
+      }
+    }
+    if (manuscriptMode === 'brand') {
+      const brandViolations = [
+        { pattern: /내가\s*(해봤|받아봤|경험)/g, msg: '브랜드 원고에 개인 경험 표현' },
+        { pattern: /솔직히\s*(말하면|나는)/g, msg: '브랜드 원고에 개인 의견 표현' },
+        { pattern: /나는|내\s*경험/g, msg: '브랜드 원고에 1인칭 개인 표현' },
+      ]
+      for (const { pattern, msg } of brandViolations) {
+        if (pattern.test(fullText)) {
+          issues.push({ type: 'mode_violation', detail: msg })
+        }
+      }
+    }
+
+    // 7. 본문 글자수 (공백 제외)
     const bodyLength = body?.replace(/\s/g, '').length ?? 0
     const minLength = wordCountMin ?? 500
     const maxLength = wordCountMax ?? 4000
@@ -116,10 +143,10 @@ export async function POST(req: Request) {
     }
 
     const hardIssues = issues.filter((i) =>
-      ['prohibition', 'strict_forbidden', 'title_length', 'too_short', 'too_long'].includes(i.type)
+      ['prohibition', 'strict_forbidden', 'title_length', 'too_short', 'too_long', 'mode_violation'].includes(i.type)
     )
     const warnIssues = issues.filter((i) =>
-      !['prohibition', 'strict_forbidden', 'title_length', 'too_short', 'too_long'].includes(i.type)
+      !['prohibition', 'strict_forbidden', 'title_length', 'too_short', 'too_long', 'mode_violation'].includes(i.type)
     )
 
     const result: 'pass' | 'reject' | 'needs_user' =
