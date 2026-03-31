@@ -172,9 +172,11 @@ export default function ManuscriptDetailPage() {
   async function handleExportAll() {
     if (!manuscript) return
 
-    // Google Drive 토큰 확인
-    const token = localStorage.getItem('gdrive_token')
+    // Google Drive 토큰 확인 — 없거나 만료됐으면 재로그인
+    let token = localStorage.getItem('gdrive_token')
     if (!token) {
+      // 기존 토큰 삭제 후 새로 로그인
+      localStorage.removeItem('gdrive_token')
       toast.info('Google 드라이브 연결이 필요합니다. 로그인 페이지로 이동합니다.')
       window.location.href = '/api/auth/google'
       return
@@ -232,9 +234,10 @@ export default function ManuscriptDetailPage() {
       })
       const data = await res.json()
       if (!res.ok) {
-        if (res.status === 401) {
+        if (res.status === 401 || res.status === 403 || (res.status === 404 && data.error?.includes('폴더'))) {
           localStorage.removeItem('gdrive_token')
-          toast.error('Google 인증이 만료됐습니다. 다시 로그인해주세요.')
+          const retry = confirm(`${data.error ?? 'Google 드라이브 접근 오류'}\n\n권한을 다시 설정하시겠습니까?`)
+          if (retry) window.location.href = '/api/auth/google'
           return
         }
         throw new Error(data.error)
@@ -350,9 +353,10 @@ export default function ManuscriptDetailPage() {
       })
       const data = await res.json()
       if (!res.ok) {
-        if (res.status === 401) {
+        if (res.status === 401 || res.status === 403 || (res.status === 404 && data.error?.includes('폴더'))) {
           localStorage.removeItem('gdrive_token')
-          toast.error('Google 인증이 만료됐습니다. 다시 로그인해주세요.')
+          const retry = confirm(`${data.error ?? 'Google 드라이브 접근 오류'}\n\n권한을 다시 설정하시겠습니까?`)
+          if (retry) window.location.href = '/api/auth/google'
           return
         }
         throw new Error(data.error)
