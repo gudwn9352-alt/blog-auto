@@ -127,6 +127,11 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
 
   // 전체 이미지 일괄 생성
   async function handleGenerateAll() {
+    const hasExisting = displayImages.some((img) => img.imageUrl)
+    if (hasExisting) {
+      const confirmed = confirm('이미 생성된 이미지가 있어요. 재생성 하시겠습니까?')
+      if (!confirmed) return
+    }
     setGenerating(true)
     const local = [...displayImages]
     let ok = 0
