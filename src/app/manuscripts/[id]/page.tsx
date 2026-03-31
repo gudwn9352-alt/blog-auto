@@ -39,6 +39,7 @@ export default function ManuscriptDetailPage() {
   const [manuscript, setManuscript] = useState<Manuscript | null>(null)
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(false)
+  const [exporting, setExporting] = useState(false)
   const [editedTitle, setEditedTitle] = useState('')
   const [editedBody, setEditedBody] = useState('')
   const [reviewing, setReviewing] = useState(false)
@@ -180,6 +181,10 @@ export default function ManuscriptDetailPage() {
   // 원고 내보내기 → 구글 드라이브 (브랜드/제3자 폴더 자동 분류)
   async function handleExportAll() {
     if (!manuscript) return
+    if (exporting) {
+      toast.warning('이미 지정 폴더에 저장 중입니다.')
+      return
+    }
 
     // Google Drive 토큰 확인
     const token = localStorage.getItem('gdrive_token')
@@ -189,8 +194,9 @@ export default function ManuscriptDetailPage() {
       return
     }
 
+    setExporting(true)
     try {
-      toast.info('구글 드라이브에 내보내기 중...')
+      toast.info('지정 폴더에 저장 중...')
 
       const mode = (manuscript as unknown as Record<string, unknown>).manuscriptMode as string ?? 'thirdparty'
 
@@ -253,6 +259,8 @@ export default function ManuscriptDetailPage() {
       toast.success(`구글 드라이브 내보내기 완료! (${data.folder}/${data.manuscriptFolder}${imgMsg})`)
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : '내보내기 실패')
+    } finally {
+      setExporting(false)
     }
   }
 
@@ -445,8 +453,8 @@ export default function ManuscriptDetailPage() {
               </Button>
               {manuscript.status === 'approved' && (
                 <>
-                  <Button size="sm" variant="outline" onClick={handleExportAll}>
-                    내보내기
+                  <Button size="sm" variant="outline" onClick={handleExportAll} disabled={exporting}>
+                    {exporting ? '저장 중...' : '내보내기'}
                   </Button>
                   <Button size="sm" variant="ghost" className="text-xs text-gray-400" onClick={() => {
                     localStorage.removeItem('gdrive_token')
