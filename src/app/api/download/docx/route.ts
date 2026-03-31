@@ -24,54 +24,39 @@ export async function POST(req: Request) {
       )
     }
 
+    // 본문에서 볼드(**텍스트**) 처리 + 줄바꿈 분할
     const bodyLines = body.split('\n')
+
+    const bodyParagraphs = bodyLines.map((line: string) => {
+      const children: typeof TextRun[] = []
+      // **볼드** 패턴 처리
+      const parts = line.split(/(\*\*[^*]+\*\*)/g)
+      const runs = parts.map((part: string) => {
+        if (part.startsWith('**') && part.endsWith('**')) {
+          return new TextRun({ text: part.slice(2, -2), bold: true, size: 22, font: 'Malgun Gothic' })
+        }
+        return new TextRun({ text: part, size: 22, font: 'Malgun Gothic' })
+      })
+      return new Paragraph({ children: runs, spacing: { after: 120 } })
+    })
 
     const doc = new Document({
       sections: [
         {
           children: [
-            // 제목
             new Paragraph({
               heading: HeadingLevel.HEADING_1,
               children: [
-                new TextRun({
-                  text: title,
-                  bold: true,
-                  size: 32,
-                }),
+                new TextRun({ text: title, bold: true, size: 32, font: 'Malgun Gothic' }),
               ],
             }),
-
-            // 빈 줄
             new Paragraph({ children: [] }),
-
-            // 본문 (줄바꿈 기준 분할)
-            ...bodyLines.map(
-              (line) =>
-                new Paragraph({
-                  children: [
-                    new TextRun({
-                      text: line,
-                      size: 22,
-                    }),
-                  ],
-                  spacing: { after: 120 },
-                }),
-            ),
-
-            // 빈 줄
+            ...bodyParagraphs,
             new Paragraph({ children: [] }),
             new Paragraph({ children: [] }),
-
-            // 하단 브랜드명
             new Paragraph({
               children: [
-                new TextRun({
-                  text: brandName ?? '더바다',
-                  bold: true,
-                  size: 20,
-                  color: '888888',
-                }),
+                new TextRun({ text: brandName ?? '더바다', bold: true, size: 20, color: '888888', font: 'Malgun Gothic' }),
               ],
             }),
           ],
