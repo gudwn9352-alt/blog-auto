@@ -62,6 +62,32 @@ export async function POST(req: Request) {
         location: 'title',
       })
     }
+    if (title && titleNoSpace < 10) {
+      issues.push({
+        type: 'title_length',
+        detail: `제목이 너무 짧습니다 (${titleNoSpace}자 / 최소 10자, 공백 제외)`,
+        location: 'title',
+      })
+    }
+
+    // 1-1. 제목 브랜드명 체크 (최소 1번, 최대 2번)
+    if (brandName && title) {
+      const brandCount = (title.match(new RegExp(brandName, 'g')) ?? []).length
+      if (brandCount === 0) {
+        issues.push({
+          type: 'title_brand',
+          detail: `제목에 브랜드명 "${brandName}"이 없습니다 (최소 1번 필요)`,
+          location: 'title',
+        })
+      }
+      if (brandCount > 2) {
+        issues.push({
+          type: 'title_brand',
+          detail: `제목에 브랜드명 "${brandName}"이 ${brandCount}번 — 최대 2번까지`,
+          location: 'title',
+        })
+      }
+    }
 
     // 2. 브랜드 언급 횟수
     if (brandName) {
@@ -143,10 +169,10 @@ export async function POST(req: Request) {
     }
 
     const hardIssues = issues.filter((i) =>
-      ['prohibition', 'strict_forbidden', 'title_length', 'too_short', 'too_long', 'mode_violation'].includes(i.type)
+      ['prohibition', 'strict_forbidden', 'title_length', 'title_brand', 'too_short', 'too_long', 'mode_violation'].includes(i.type)
     )
     const warnIssues = issues.filter((i) =>
-      !['prohibition', 'strict_forbidden', 'title_length', 'too_short', 'too_long', 'mode_violation'].includes(i.type)
+      !['prohibition', 'strict_forbidden', 'title_length', 'title_brand', 'too_short', 'too_long', 'mode_violation'].includes(i.type)
     )
 
     const result: 'pass' | 'reject' | 'needs_user' =
