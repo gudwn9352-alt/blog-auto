@@ -11,8 +11,8 @@ import {
   VAR1_WRITING_STYLE, VAR2_FORMALITY, VAR3_EMOTION_EXPRESSION,
   VAR4_SPELLING, VAR6_BRAND_MENTION, VAR8_PERSONAL_DISCLOSURE,
 } from '@/lib/layers/personas'
-import { TITLE_STRUCTURES, TITLE_TONES, TITLE_HOOKS } from '@/lib/layers/titles'
-import { QUOTE_TYPES } from '@/lib/layers/quotes'
+import { TITLE_STRUCTURES } from '@/lib/layers/titles'
+// quotes는 프롬프트에 규칙으로만 반영
 import { FORBIDDEN_HONORIFICS } from '@/lib/layers/honorifics'
 import { getCognitionTouchingPrompt } from '@/lib/layers/cognition-touching'
 
@@ -57,8 +57,7 @@ export function buildWriterSystemPrompt(
 
   // 제목 설정
   const titleStructure = resolveById(TITLE_STRUCTURES, settings.titleSettings?.structureId)
-  const titleTone = resolveById(TITLE_TONES, settings.titleSettings?.structureId ? TITLE_TONES[0]?.id : undefined)
-  const titleHook = resolveById(TITLE_HOOKS, settings.titleSettings?.structureId ? TITLE_HOOKS[0]?.id : undefined)
+  // titleTone, titleHook은 프롬프트에 제목 구조로 반영됨
 
   // 인지경로 핀포인트 터칭
   const touchingPrompt = settings.persona.slotI
@@ -137,7 +136,14 @@ ${titleStructure ? `- 구조: ${titleStructure}` : '- 자유롭게'}
 - 같은 문장 구조로 반복 사용 금지 (예: "더바다를 통해~" 5번 반복 ❌)
 - 10번 이상은 사용하지 마세요
 
-■ 인용구: 본문에 자연스럽게 0~3개 삽입 가능 (짧은 명언, 격언, 속담 등)
+■ 인용구 규칙:
+- 본문에 0~3개 인용구 삽입 가능
+- 인용구로 강조할 문장의 앞뒤에 태그를 배치하세요
+- 형식: (인용구N)강조할 문장(인용구N) — N은 1부터 순서대로
+- 예시: (인용구1)보험금은 청구해야 받을 수 있습니다(인용구1)
+- 예시: (인용구2)더바다 숨은 보험금 조회한 결과(인용구2)
+- 인용구 안의 문장은 짧고 임팩트 있게 (20자 이내 권장)
+- 인용구는 본문 흐름에 자연스럽게 배치
 
 ■ 거래처 정보 (은근하게만 반영, 직접 광고 금지):
 - 이름: ${brandInfo.name}
