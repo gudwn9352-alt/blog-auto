@@ -139,6 +139,7 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
         if (res.ok && data.imageUrl) {
           local[i] = { ...local[i], imageUrl: data.imageUrl }
           setLocalImages([...local])
+          onImagesChange([...local]) // 매 이미지마다 Firestore 저장
           ok++
         } else {
           await new Promise(r => setTimeout(r, 2000))
@@ -150,6 +151,7 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
           if (res2.ok && data2.imageUrl) {
             local[i] = { ...local[i], imageUrl: data2.imageUrl }
             setLocalImages([...local])
+            onImagesChange([...local]) // 매 이미지마다 Firestore 저장
             ok++
           }
         }
