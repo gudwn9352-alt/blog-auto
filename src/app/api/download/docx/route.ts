@@ -18,24 +18,19 @@ export async function POST(req: Request) {
     const { title, body, brandName }: DocxRequest = await req.json()
 
     if (!title || !body) {
-      return NextResponse.json(
-        { error: '제목과 본문이 필요합니다' },
-        { status: 400 },
-      )
+      return NextResponse.json({ error: '제목과 본문이 필요합니다' }, { status: 400 })
     }
 
-    // 본문에서 볼드(**텍스트**) 처리 + 줄바꿈 분할
     const bodyLines = body.split('\n')
 
     const bodyParagraphs = bodyLines.map((line: string) => {
-      const children: typeof TextRun[] = []
       // **볼드** 패턴 처리
       const parts = line.split(/(\*\*[^*]+\*\*)/g)
-      const runs = parts.map((part: string) => {
+      const runs = parts.filter(Boolean).map((part: string) => {
         if (part.startsWith('**') && part.endsWith('**')) {
-          return new TextRun({ text: part.slice(2, -2), bold: true, size: 22, font: 'Malgun Gothic' })
+          return new TextRun({ text: part.slice(2, -2), bold: true, size: 22, font: { name: 'Malgun Gothic' } })
         }
-        return new TextRun({ text: part, size: 22, font: 'Malgun Gothic' })
+        return new TextRun({ text: part, size: 22, font: { name: 'Malgun Gothic' } })
       })
       return new Paragraph({ children: runs, spacing: { after: 120 } })
     })
@@ -47,7 +42,7 @@ export async function POST(req: Request) {
             new Paragraph({
               heading: HeadingLevel.HEADING_1,
               children: [
-                new TextRun({ text: title, bold: true, size: 32, font: 'Malgun Gothic' }),
+                new TextRun({ text: title, bold: true, size: 32, font: { name: 'Malgun Gothic' } }),
               ],
             }),
             new Paragraph({ children: [] }),
@@ -56,7 +51,7 @@ export async function POST(req: Request) {
             new Paragraph({ children: [] }),
             new Paragraph({
               children: [
-                new TextRun({ text: brandName ?? '더바다', bold: true, size: 20, color: '888888', font: 'Malgun Gothic' }),
+                new TextRun({ text: brandName ?? '', bold: true, size: 20, font: { name: 'Malgun Gothic' } }),
               ],
             }),
           ],
@@ -70,9 +65,8 @@ export async function POST(req: Request) {
     return new NextResponse(uint8, {
       status: 200,
       headers: {
-        'Content-Type':
-          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'Content-Disposition': 'attachment; filename="원고.docx"',
+        'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'Content-Disposition': 'attachment; filename="manuscript.docx"',
       },
     })
   } catch (error: unknown) {
