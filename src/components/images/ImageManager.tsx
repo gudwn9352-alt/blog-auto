@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState } from 'react'
 import { toast } from 'sonner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { ImageEditor } from './ImageEditor'
 import type { GeneratedImage } from '@/types/manuscript'
 
@@ -363,7 +363,7 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
 
         {/* 에디터 다이얼로그 — 전체화면 + 좌우 네비게이션 */}
         <Dialog open={editingIdx >= 0} onOpenChange={(open) => !open && setEditingIdx(-1)}>
-          <DialogContent className="max-w-[98vw] w-[98vw] max-h-[95vh] h-[95vh] p-0 overflow-hidden">
+          <DialogContent className="p-0 overflow-hidden" style={{ maxWidth: '98vw', width: '98vw', maxHeight: '95vh', height: '95vh' }}>
             <div className="flex flex-col h-full">
               {/* 상단 바 */}
               <div className="flex items-center justify-between px-6 py-3 border-b bg-white shrink-0">
