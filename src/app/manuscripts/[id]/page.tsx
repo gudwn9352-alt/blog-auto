@@ -172,12 +172,12 @@ export default function ManuscriptDetailPage() {
   async function handleExportAll() {
     if (!manuscript) return
 
-    // Google Drive 토큰 확인 — 없거나 만료됐으면 재로그인
-    let token = localStorage.getItem('gdrive_token')
+    // Google Drive 토큰 확인
+    const token = localStorage.getItem('gdrive_token')
     if (!token) {
-      // 기존 토큰 삭제 후 새로 로그인
-      localStorage.removeItem('gdrive_token')
-      toast.info('Google 드라이브 연결이 필요합니다. 로그인 페이지로 이동합니다.')
+      toast.info('Google 드라이브 로그인이 필요합니다.')
+      // 현재 원고 ID를 저장해서 로그인 후 돌아오기
+      localStorage.setItem('gdrive_export_after_login', manuscript.id!)
       window.location.href = '/api/auth/google'
       return
     }
@@ -389,6 +389,7 @@ export default function ManuscriptDetailPage() {
 
   return (
     <div className="p-6 max-w-3xl space-y-4">
+      <PageHeader title={manuscript.title ?? '원고 상세'} backHref="/manuscripts" />
       {/* 헤더 */}
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1">
@@ -436,9 +437,17 @@ export default function ManuscriptDetailPage() {
                 다운로드
               </Button>
               {manuscript.status === 'approved' && (
-                <Button size="sm" variant="outline" onClick={handleExportAll}>
-                  내보내기
-                </Button>
+                <>
+                  <Button size="sm" variant="outline" onClick={handleExportAll}>
+                    내보내기
+                  </Button>
+                  <Button size="sm" variant="ghost" className="text-xs text-gray-400" onClick={() => {
+                    localStorage.removeItem('gdrive_token')
+                    toast.info('Google 드라이브 토큰 초기화 완료. 내보내기를 다시 클릭하세요.')
+                  }}>
+                    연결 초기화
+                  </Button>
+                </>
               )}
               <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
                 수정
