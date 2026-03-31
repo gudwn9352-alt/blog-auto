@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ImageEditor } from './ImageEditor'
+import { uploadImage } from '@/lib/firebase/storage'
 import type { GeneratedImage } from '@/types/manuscript'
 
 interface ImageManagerProps {
@@ -85,10 +86,23 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
 
+      // Firebase Storage에 업로드 → URL만 Firestore에 저장
+      let imageUrl = data.imageUrl
+      try {
+        imageUrl = await uploadImage(manuscriptId, idx, data.imageUrl)
+      } catch {
+        // Storage 업로드 실패 시 Base64 그대로 사용
+        toast.warning(`이미지 ${idx + 1} Storage 업로드 실패 — 로컬 저장`)
+      }
+
       const updated = [...images]
-      updated[idx] = { ...updated[idx], imageUrl: data.imageUrl }
+      updated[idx] = { ...updated[idx], imageUrl }
       onImagesChange(updated)
-      toast.success(`이미지 ${idx + 1} 생성 완료`)
+      if (data.model === 'gemini-2.5-flash-image') {
+        toast.warning(`이미지 ${idx + 1} — Imagen 4.0 실패, Gemini 2.5 Flash로 대체 생성됨`)
+      } else {
+        toast.success(`이미지 ${idx + 1} 생성 완료 (Imagen 4.0)`)
+      }
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : '이미지 생성 실패')
     } finally {
@@ -110,9 +124,17 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
   }
 
   // 에디터 저장
-  function handleEditorSave(editedUrl: string) {
+  async function handleEditorSave(editedUrl: string) {
+    // 편집된 이미지도 Storage에 업로드
+    let imageUrl = editedUrl
+    try {
+      imageUrl = await uploadImage(manuscriptId, editingIdx, editedUrl)
+    } catch {
+      toast.warning('Storage 업로드 실패 — 로컬 저장')
+    }
+
     const updated = [...images]
-    updated[editingIdx] = { ...updated[editingIdx], imageUrl: editedUrl, edited: true }
+    updated[editingIdx] = { ...updated[editingIdx], imageUrl, edited: true }
     onImagesChange(updated)
     setEditingIdx(-1)
     toast.success('이미지 편집 저장 완료')
