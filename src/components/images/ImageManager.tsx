@@ -115,16 +115,34 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
     }
   }
 
-  // 전체 이미지 일괄 생성
+  // 전체 이미지 일괄 생성 (실패 시 1회 재시도)
   async function handleGenerateAll() {
     setGenerating(true)
+    const failed: number[] = []
     for (let i = 0; i < images.length; i++) {
-      if (images[i].imageUrl) continue // 이미 생성된 건 스킵
+      if (images[i].imageUrl) continue
       setGeneratingIdx(i)
-      await handleGenerateImage(i)
+      try {
+        await handleGenerateImage(i)
+      } catch {
+        failed.push(i)
+      }
+      // API 부하 방지 1초 대기
+      await new Promise((r) => setTimeout(r, 1000))
+    }
+    // 실패한 건 1회 재시도
+    for (const i of failed) {
+      if (images[i]?.imageUrl) continue
+      setGeneratingIdx(i)
+      try {
+        await handleGenerateImage(i)
+      } catch { /* skip */ }
+      await new Promise((r) => setTimeout(r, 1000))
     }
     setGenerating(false)
     setGeneratingIdx(-1)
+    const successCount = images.filter((img) => img.imageUrl).length
+    toast.success(`이미지 ${successCount}/${images.length}장 생성 완료`)
   }
 
   // 에디터 저장

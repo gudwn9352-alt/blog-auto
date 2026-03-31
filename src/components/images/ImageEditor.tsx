@@ -45,28 +45,39 @@ export function ImageEditor({ imageUrl, onSave, onCancel, initialMainCopy, initi
   const [imgLoaded, setImgLoaded] = useState(false)
   const imgRef = useRef<HTMLImageElement | null>(null)
 
-  // 드래그 가능한 아이템들
-  const [items, setItems] = useState<DraggableItem[]>([
-    {
-      id: 'overlay', type: 'box',
-      x: 0, y: 250, width: CANVAS_SIZE, height: 200,
-      bgColor: '#000000', bgOpacity: 40, borderRadius: 0,
-    },
-    {
-      id: 'main', type: 'text',
-      x: CANVAS_SIZE / 2, y: 320,
-      width: 500, height: 60,
-      text: initialMainCopy ?? '', fontSize: 48, fontFamily: 'Noto Sans KR',
-      color: '#ffffff', bold: true, shadow: true,
-    },
-    {
-      id: 'sub', type: 'text',
-      x: CANVAS_SIZE / 2, y: 380,
-      width: 500, height: 40,
-      text: initialSubCopy ?? '', fontSize: 24, fontFamily: 'Noto Sans KR',
-      color: '#ffffff', bold: false, shadow: true,
-    },
-  ])
+  // 드래그 가능한 아이템들 — processingText가 있으면 자동 배치
+  const [items, setItems] = useState<DraggableItem[]>(() => {
+    const defaultItems: DraggableItem[] = []
+
+    // 텍스트가 있으면 오버레이 + 텍스트 자동 추가
+    if (initialMainCopy || initialSubCopy) {
+      defaultItems.push({
+        id: 'overlay', type: 'box',
+        x: 0, y: CANVAS_SIZE - 200, width: CANVAS_SIZE, height: 200,
+        bgColor: '#000000', bgOpacity: 45, borderRadius: 0,
+      })
+      if (initialMainCopy) {
+        defaultItems.push({
+          id: 'main', type: 'text',
+          x: CANVAS_SIZE / 2, y: CANVAS_SIZE - 130,
+          width: 500, height: 60,
+          text: initialMainCopy, fontSize: 44, fontFamily: 'Noto Sans KR',
+          color: '#ffffff', bold: true, shadow: true,
+        })
+      }
+      if (initialSubCopy) {
+        defaultItems.push({
+          id: 'sub', type: 'text',
+          x: CANVAS_SIZE / 2, y: CANVAS_SIZE - 70,
+          width: 500, height: 40,
+          text: initialSubCopy, fontSize: 22, fontFamily: 'Noto Sans KR',
+          color: '#dddddd', bold: false, shadow: true,
+        })
+      }
+    }
+
+    return defaultItems
+  })
 
   const [selectedId, setSelectedId] = useState<string | null>('main')
   const [dragging, setDragging] = useState(false)
@@ -296,13 +307,13 @@ export function ImageEditor({ imageUrl, onSave, onCancel, initialMainCopy, initi
   }
 
   return (
-    <div className="flex gap-6 items-start">
+    <div className="flex flex-col lg:flex-row gap-6 items-start w-full">
       {/* 캔버스 */}
-      <div className="shrink-0">
+      <div className="w-full lg:w-auto lg:shrink-0">
         <canvas
           ref={canvasRef}
-          className="border border-gray-200 rounded-xl cursor-move shadow-sm"
-          style={{ width: 560, height: 560 }}
+          className="border border-gray-200 rounded-xl cursor-move shadow-sm w-full max-w-[600px] lg:w-[560px]"
+          style={{ aspectRatio: '1/1' }}
           onMouseDown={handleMouseDown}
           onDoubleClick={handleDoubleClick}
           onMouseMove={handleMouseMove}
@@ -319,7 +330,7 @@ export function ImageEditor({ imageUrl, onSave, onCancel, initialMainCopy, initi
       </div>
 
       {/* 편집 패널 */}
-      <div className="flex-1 space-y-3 max-w-sm">
+      <div className="flex-1 space-y-3 w-full lg:max-w-sm">
         {selected ? (
           <>
             <p className="text-xs font-medium text-gray-500">
