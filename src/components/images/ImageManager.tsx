@@ -8,7 +8,6 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ImageEditor } from './ImageEditor'
-import { uploadImage } from '@/lib/firebase/storage'
 import type { GeneratedImage } from '@/types/manuscript'
 
 interface ImageManagerProps {
@@ -86,13 +85,18 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
 
-      // Firebase Storage에 업로드 → URL만 Firestore에 저장
+      // 서버 API로 업로드 → URL만 Firestore에 저장
       let imageUrl = data.imageUrl
       try {
-        imageUrl = await uploadImage(manuscriptId, idx, data.imageUrl)
+        const uploadRes = await fetch('/api/upload/image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ manuscriptId, imageIndex: idx, dataUrl: data.imageUrl }),
+        })
+        const uploadData = await uploadRes.json()
+        if (uploadData.imageUrl) imageUrl = uploadData.imageUrl
       } catch {
-        // Storage 업로드 실패 시 Base64 그대로 사용
-        toast.warning(`이미지 ${idx + 1} Storage 업로드 실패 — 로컬 저장`)
+        // 업로드 실패 시 Base64 그대로 사용
       }
 
       const updated = [...images]
@@ -125,13 +129,16 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
 
   // 에디터 저장
   async function handleEditorSave(editedUrl: string) {
-    // 편집된 이미지도 Storage에 업로드
     let imageUrl = editedUrl
     try {
-      imageUrl = await uploadImage(manuscriptId, editingIdx, editedUrl)
-    } catch {
-      toast.warning('Storage 업로드 실패 — 로컬 저장')
-    }
+      const uploadRes = await fetch('/api/upload/image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ manuscriptId, imageIndex: editingIdx, dataUrl: editedUrl }),
+      })
+      const uploadData = await uploadRes.json()
+      if (uploadData.imageUrl) imageUrl = uploadData.imageUrl
+    } catch { /* 업로드 실패 시 Base64 유지 */ }
 
     const updated = [...images]
     updated[editingIdx] = { ...updated[editingIdx], imageUrl, edited: true }
