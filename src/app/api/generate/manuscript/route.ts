@@ -20,11 +20,12 @@ interface GenerateRequest {
   }
   openProhibitions: string[]
   recentManuscripts?: Array<{ category?: string; typeId?: string; materialSettings?: { category?: string }; persona?: Record<string, string> }>
+  fixMode?: { originalTitle: string; originalBody: string; issues: string }
 }
 
 export async function POST(req: Request) {
   try {
-    const { settings: rawSettings, brandInfo, openProhibitions, recentManuscripts }: GenerateRequest = await req.json()
+    const { settings: rawSettings, brandInfo, openProhibitions, recentManuscripts, fixMode }: GenerateRequest = await req.json()
 
     if (!brandInfo?.name) {
       return NextResponse.json({ error: '브랜드 정보가 필요합니다' }, { status: 400 })
@@ -37,6 +38,21 @@ export async function POST(req: Request) {
     const systemPrompt = buildWriterSystemPrompt(settings, brandInfo, openProhibitions)
 
     // Claude API 호출
+    const userContent = fixMode
+      ? `아래 원고가 검수에서 반려되었습니다. 반려 사유에 해당하는 부분만 수정하고, 나머지 문맥·흐름·톤은 그대로 유지해주세요.
+
+[반려 사유]
+${fixMode.issues}
+
+[기존 제목]
+${fixMode.originalTitle}
+
+[기존 본문]
+${fixMode.originalBody}
+
+수정된 원고를 동일한 JSON 형식으로 출력하세요.`
+      : '지시서대로 블로그 원고를 작성해주세요.'
+
     const message = await writerClient.messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 4096,
@@ -44,7 +60,7 @@ export async function POST(req: Request) {
       messages: [
         {
           role: 'user',
-          content: '지시서대로 블로그 원고를 작성해주세요.',
+          content: userContent,
         },
       ],
     })

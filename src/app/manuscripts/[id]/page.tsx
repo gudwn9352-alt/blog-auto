@@ -168,6 +168,72 @@ export default function ManuscriptDetailPage() {
     }
   }
 
+  async function handleAiFix() {
+    if (!manuscript?.id || !lastReview?.issues) return
+    setReviewing(true)
+    try {
+      const issuesSummary = lastReview.issues.map((i) => `- [${i.type}] ${i.detail}`).join('\n')
+
+      const res = await fetch('/api/generate/manuscript', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          settings: {
+            brandId: manuscript.brandId,
+            category: manuscript.category,
+            typeId: manuscript.typeId,
+            material: manuscript.materialSettings ?? { mode: 'auto' },
+            appealPoint: manuscript.appealPoint ?? '',
+            titleSettings: { structureId: '', badaPosition: 'auto', charCount: 'mid' },
+            persona: manuscript.persona ?? {},
+            personaMode: 'random',
+            variables: manuscript.variables ?? { var7: 'long' },
+            wordCount: manuscript.wordCount ?? { min: 1500, max: 2500 },
+            imageSettings: { count: 8, types: [], selectionMode: 'random' },
+            manuscriptMode: (manuscript as unknown as Record<string, unknown>).manuscriptMode ?? 'thirdparty',
+          },
+          brandInfo: {
+            name: selectedBrand?.name ?? '더바다',
+            serviceDescription: selectedBrand?.serviceDescription ?? '',
+            targetAudience: selectedBrand?.targetAudience,
+            tone: selectedBrand?.tone,
+            voiceGuide: selectedBrand?.voiceGuide,
+          },
+          openProhibitions: [],
+          fixMode: {
+            originalTitle: manuscript.title,
+            originalBody: manuscript.body,
+            issues: issuesSummary,
+          },
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+
+      // 수정된 원고로 업데이트
+      await updateManuscript(manuscript.id, {
+        title: data.title,
+        body: data.body,
+        status: 'pending_review',
+        editHistory: [
+          ...(manuscript.editHistory ?? []),
+          {
+            timestamp: new Date().toISOString(),
+            before: manuscript.body ?? '',
+            after: data.body,
+            editedBy: 'ai' as const,
+          },
+        ],
+      })
+      toast.success('AI가 반려 사유를 수정했습니다. 재검수를 실행하세요.')
+      await loadManuscript()
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : 'AI 수정 실패')
+    } finally {
+      setReviewing(false)
+    }
+  }
+
   async function handleExportGDrive() {
     if (!manuscript) return
     // Google Drive 토큰 확인
@@ -519,21 +585,79 @@ export default function ManuscriptDetailPage() {
         </Card>
       )}
 
-      {/* 액션 버튼 */}
-      {!editing && (
-        <div className="flex gap-2">
-          {manuscript.status === 'pending_review' && (
+      {/* 반려 원고 — 강제 승인 + AI 수정 */}
+      {manuscript.status === 'rejected' && lastReview && (
+        <Card className="border-red-200 bg-red-50">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-red-700">반려된 원고</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {lastReview.issues && lastReview.issues.length > 0 && (
+              <ul className="space-y-1">
+                {lastReview.issues.map((issue, i) => (
+                  <li key={i} className="text-xs bg-white px-3 py-2 rounded border border-red-200">
+                    <span className="font-medium text-red-600">[{issue.type}]</span>{' '}
+                    <span className="text-gray-700">{issue.detail}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="flex gap-2 pt-1">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleAiFix}
+                disabled={reviewing}
+              >
+                {reviewing ? 'AI 수정 중...' : 'AI로 반려 사유 수정'}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="text-yellow-700 border-yellow-300 hover:bg-yellow-50"
+                onClick={async () => {
+                  const confirmed = confirm('이 원고는 검수 미통과입니다.\n강제 승인하시겠습니까?\n\n품질 미달 원고가 내보내기/다운로드에 포함될 수 있습니다.')
+                  if (!confirmed) return
+                  await updateManuscript(manuscript.id!, { status: 'approved' })
+                  toast.warning('강제 승인되었습니다')
+                  await loadManuscript()
+                }}
+              >
+                강제 승인
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 검수 대기 — 강제 승인 */}
+      {manuscript.status === 'pending_review' && (
+        <Card className="border-yellow-200 bg-yellow-50">
+          <CardContent className="pt-4 pb-3 flex gap-2">
             <Button onClick={handleReview} disabled={reviewing} className="flex-1">
               {reviewing ? '검수 중...' : '검수 실행'}
             </Button>
-          )}
-          {manuscript.status === 'approved' && (
-            <div className="text-sm text-green-600 font-medium">승인된 원고입니다</div>
-          )}
-          {manuscript.status === 'rejected' && (
-            <div className="text-sm text-red-500 font-medium">반려된 원고입니다</div>
-          )}
-        </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-yellow-700 border-yellow-300 hover:bg-yellow-50"
+              onClick={async () => {
+                const confirmed = confirm('이 원고는 아직 검수되지 않았습니다.\n강제 승인하시겠습니까?')
+                if (!confirmed) return
+                await updateManuscript(manuscript.id!, { status: 'approved' })
+                toast.warning('강제 승인되었습니다')
+                await loadManuscript()
+              }}
+            >
+              강제 승인
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 승인 완료 */}
+      {!editing && manuscript.status === 'approved' && (
+        <div className="text-sm text-green-600 font-medium">승인된 원고입니다</div>
       )}
     </div>
   )
