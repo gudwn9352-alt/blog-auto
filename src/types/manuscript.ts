@@ -129,6 +129,7 @@ export interface Manuscript {
   id?: string
   brandId: string
   status: ManuscriptStatus
+  manuscriptMode?: 'brand' | 'thirdparty'  // 브랜드/제3자 원고 모드
   createdAt: string
   updatedAt: string
 

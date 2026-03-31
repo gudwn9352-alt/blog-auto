@@ -111,6 +111,7 @@ export default function GeneratePage() {
         const rs = data.resolvedSettings as Record<string, unknown>
         return createManuscript({
           brandId: settings.brandId,
+          manuscriptMode: settings.manuscriptMode,
           status,
           title: data.title,
           body: data.body,

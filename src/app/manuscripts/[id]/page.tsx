@@ -198,7 +198,7 @@ export default function ManuscriptDetailPage() {
     try {
       toast.info('지정 폴더에 저장 중...')
 
-      const mode = (manuscript as unknown as Record<string, unknown>).manuscriptMode as string ?? 'thirdparty'
+      const mode = manuscript.manuscriptMode ?? 'thirdparty'
 
       // 원고 .docx 생성
       const docxRes = await fetch('/api/download/docx', {
@@ -350,7 +350,7 @@ export default function ManuscriptDetailPage() {
     }
 
     try {
-      const mode = (manuscript as unknown as Record<string, unknown>).manuscriptMode as string ?? 'thirdparty'
+      const mode = manuscript.manuscriptMode ?? 'thirdparty'
       const res = await fetch('/api/export/gdrive', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
