@@ -23,6 +23,8 @@ const brandSchema = z.object({
   contactInfo: z.string().optional(),
   voiceGuide: z.string().optional(),
   imageStyleGuide: z.string().optional(),
+  gdriveBrandFolder: z.string().optional(),
+  gdriveThirdPartyFolder: z.string().optional(),
 })
 
 type BrandForm = z.infer<typeof brandSchema>
@@ -43,6 +45,8 @@ export default function BrandSettingsPage() {
       contactInfo: '',
       voiceGuide: '',
       imageStyleGuide: '',
+      gdriveBrandFolder: '바이럴/1.브랜드 원고 미사용',
+      gdriveThirdPartyFolder: '바이럴/3.제3자 원고 미사용',
     },
   })
 
@@ -75,6 +79,8 @@ export default function BrandSettingsPage() {
       contactInfo: brand.contactInfo ?? '',
       voiceGuide: brand.voiceGuide ?? '',
       imageStyleGuide: brand.imageStyleGuide ?? '',
+      gdriveBrandFolder: brand.gdriveBrandFolder ?? '바이럴/1.브랜드 원고 미사용',
+      gdriveThirdPartyFolder: brand.gdriveThirdPartyFolder ?? '바이럴/3.제3자 원고 미사용',
     })
   }
 
@@ -88,6 +94,8 @@ export default function BrandSettingsPage() {
       contactInfo: '',
       voiceGuide: '',
       imageStyleGuide: '',
+      gdriveBrandFolder: '바이럴/1.브랜드 원고 미사용',
+      gdriveThirdPartyFolder: '바이럴/3.제3자 원고 미사용',
     })
   }
 
@@ -102,6 +110,8 @@ export default function BrandSettingsPage() {
         contactInfo: values.contactInfo,
         voiceGuide: values.voiceGuide,
         imageStyleGuide: values.imageStyleGuide,
+        gdriveBrandFolder: values.gdriveBrandFolder,
+        gdriveThirdPartyFolder: values.gdriveThirdPartyFolder,
       }
 
       if (selectedId) {
@@ -255,6 +265,31 @@ export default function BrandSettingsPage() {
                   {...form.register('imageStyleGuide')}
                   placeholder={'전체 톤: 깔끔하고 따뜻한 느낌\n인물 이미지: 밝은 조명, 자연스러운 표정\n카드뉴스: 파란색 계열 배경, 흰색 텍스트\n일러스트: 플랫 스타일, 파스텔 톤'}
                   rows={5}
+                />
+              </div>
+
+              <Separator />
+
+              <div className="space-y-1.5">
+                <Label className="font-semibold">구글 드라이브 내보내기 경로</Label>
+                <p className="text-xs text-gray-400">구글 드라이브에 이미 존재하는 폴더 경로를 입력하세요. 슬래시(/)로 구분합니다.</p>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="gdriveBrandFolder">브랜드 원고 저장 경로</Label>
+                <Input
+                  id="gdriveBrandFolder"
+                  {...form.register('gdriveBrandFolder')}
+                  placeholder="바이럴/1.브랜드 원고 미사용"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label htmlFor="gdriveThirdPartyFolder">제3자 원고 저장 경로</Label>
+                <Input
+                  id="gdriveThirdPartyFolder"
+                  {...form.register('gdriveThirdPartyFolder')}
+                  placeholder="바이럴/3.제3자 원고 미사용"
                 />
               </div>
 

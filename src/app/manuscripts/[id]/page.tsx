@@ -219,6 +219,8 @@ export default function ManuscriptDetailPage() {
           body: manuscript.body,
           brandName: selectedBrand?.name ?? '더바다',
           manuscriptMode: mode,
+          gdriveBrandFolder: selectedBrand?.gdriveBrandFolder,
+          gdriveThirdPartyFolder: selectedBrand?.gdriveThirdPartyFolder,
           docxBase64: await blobToBase64(docxBlob),
           images: await Promise.all(imageFiles.map(async (f, i) => ({
             imageUrl: await blobToBase64(f.blob),

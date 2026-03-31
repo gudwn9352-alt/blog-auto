@@ -184,6 +184,8 @@ export interface Brand {
   voiceGuide?: string             // 브랜드 보이스 가이드
   imageStyleGuide?: string        // 이미지 스타일 가이드 (타입별)
   logoUrl?: string                // 브랜드 로고 (Base64 data URL)
+  gdriveBrandFolder?: string      // 구글 드라이브 브랜드 원고 경로 (예: 바이럴/1.브랜드 원고 미사용)
+  gdriveThirdPartyFolder?: string // 구글 드라이브 제3자 원고 경로 (예: 바이럴/3.제3자 원고 미사용)
   createdAt?: string
   updatedAt?: string
 }

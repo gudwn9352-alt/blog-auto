@@ -10,6 +10,8 @@ interface ExportRequest {
   docxBase64?: string
   images?: Array<{ imageUrl: string; position: number; fileName?: string }>
   accessToken: string
+  gdriveBrandFolder?: string      // 예: "바이럴/1.브랜드 원고 미사용"
+  gdriveThirdPartyFolder?: string // 예: "바이럴/3.제3자 원고 미사용"
 }
 
 // 기존 폴더 찾기 (생성 안 함)
@@ -47,7 +49,7 @@ async function createFolder(
 
 export async function POST(req: Request) {
   try {
-    const { title, body, brandName, manuscriptMode, docxBase64, images, accessToken }: ExportRequest = await req.json()
+    const { title, body, brandName, manuscriptMode, docxBase64, images, accessToken, gdriveBrandFolder, gdriveThirdPartyFolder }: ExportRequest = await req.json()
 
     if (!accessToken) {
       return NextResponse.json({ error: 'Google 인증이 필요합니다' }, { status: 401 })
@@ -61,20 +63,25 @@ export async function POST(req: Request) {
 
     const drive = google.drive({ version: 'v3', auth: oauth2Client })
 
-    // 1. 기존 바이럴 폴더 찾기
-    const viralFolder = await findFolder(drive, 'root', '바이럴')
-    if (!viralFolder) {
-      return NextResponse.json({ error: '"바이럴" 폴더를 찾을 수 없습니다. 구글 드라이브에 "바이럴" 폴더가 있는지 확인하세요.' }, { status: 404 })
-    }
+    // 브랜드 설정에서 경로 가져오기 (예: "바이럴/1.브랜드 원고 미사용")
+    const folderPath = manuscriptMode === 'brand'
+      ? (gdriveBrandFolder ?? '바이럴/1.브랜드 원고 미사용')
+      : (gdriveThirdPartyFolder ?? '바이럴/3.제3자 원고 미사용')
 
-    // 2. 브랜드/제3자 폴더 찾기 (기존 폴더 사용)
-    const targetFolderName = manuscriptMode === 'brand'
-      ? '1.브랜드 원고 미사용'
-      : '3.제3자 원고 미사용'
-    const targetFolder = await findFolder(drive, viralFolder, targetFolderName)
-    if (!targetFolder) {
-      return NextResponse.json({ error: `"${targetFolderName}" 폴더를 찾을 수 없습니다.` }, { status: 404 })
+    // 경로를 순서대로 탐색 (예: "바이럴" → "1.브랜드 원고 미사용")
+    const pathParts = folderPath.split('/').filter(Boolean)
+    let currentParent = 'root'
+
+    for (const part of pathParts) {
+      const found = await findFolder(drive, currentParent, part)
+      if (!found) {
+        return NextResponse.json({
+          error: `구글 드라이브 경로 설정 오류: "${part}" 폴더를 찾을 수 없습니다.\n전체 경로: ${folderPath}\n브랜드 설정에서 경로를 확인하세요.`
+        }, { status: 404 })
+      }
+      currentParent = found
     }
+    const targetFolder = currentParent
 
     // 3. 날짜_제목 폴더 생성
     const now = new Date()
