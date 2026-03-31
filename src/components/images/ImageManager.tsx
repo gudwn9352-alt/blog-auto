@@ -121,7 +121,7 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
     const local = [...images]
     let ok = 0
     for (let i = 0; i < local.length; i++) {
-      if (local[i].imageUrl) { ok++; continue }
+      // 이미 생성된 이미지도 재생성
       setGeneratingIdx(i)
       try {
         const res = await fetch('/api/generate/image', {
@@ -265,9 +265,9 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
                 </Button>
               </div>
             )}
-            {images.length > 0 && images.some((img) => !img.imageUrl) && (
+            {images.length > 0 && (
               <Button size="sm" onClick={handleGenerateAll} disabled={generating}>
-                {generating ? `${generatingIdx + 1}/${images.length} 생성 중...` : '전체 생성'}
+                {generating ? `${generatingIdx + 1}/${images.length} 생성 중...` : images.every((img) => img.imageUrl) ? '전체 재생성' : '전체 생성'}
               </Button>
             )}
             {images.length > 0 && images.some((img) => img.imageUrl) && (
