@@ -153,7 +153,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       success: true,
-      folder: targetFolderName,
+      folder: folderPath,
       manuscriptFolder: folderName,
       uploadedImages,
     })
