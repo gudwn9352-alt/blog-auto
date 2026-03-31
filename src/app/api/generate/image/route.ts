@@ -1,12 +1,8 @@
 import { NextResponse } from 'next/server'
-import { GoogleGenAI } from '@google/genai'
-
-const genai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY ?? '' })
 
 interface ImageRequest {
-  prompt: string          // 영어 프롬프트
-  negativePrompt?: string
-  imageType: string       // 이미지 타입 ID (1-1, 3-1 등)
+  prompt: string
+  imageType: string
 }
 
 export async function POST(req: Request) {
@@ -17,27 +13,49 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: '프롬프트가 필요합니다' }, { status: 400 })
     }
 
-    // Gemini Imagen 3으로 이미지 생성
-    const response = await genai.models.generateImages({
-      model: 'imagen-3.0-generate-002',
-      prompt,
-      config: {
-        numberOfImages: 1,
-        aspectRatio: '1:1',
-      },
-    })
-
-    if (!response.generatedImages || response.generatedImages.length === 0) {
-      return NextResponse.json({ error: '이미지 생성 실패' }, { status: 500 })
+    const apiKey = process.env.GEMINI_API_KEY
+    if (!apiKey) {
+      return NextResponse.json({ error: 'Gemini API 키가 없습니다' }, { status: 500 })
     }
 
-    const imageData = response.generatedImages[0].image?.imageBytes
-    if (!imageData) {
-      return NextResponse.json({ error: '이미지 데이터 없음' }, { status: 500 })
+    // Gemini 2.0 Flash로 이미지 생성
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                { text: `Generate a high quality image: ${prompt}. The image should be clean, professional, and suitable for a blog post. Korean people only for human subjects.` }
+              ]
+            }
+          ],
+          generationConfig: {
+            responseModalities: ['TEXT', 'IMAGE'],
+          }
+        }),
+      }
+    )
+
+    if (!response.ok) {
+      const err = await response.json()
+      console.error('[Gemini 오류]', JSON.stringify(err))
+      return NextResponse.json({ error: err.error?.message ?? '이미지 생성 실패' }, { status: 500 })
     }
 
-    // Base64 data URL로 반환
-    const dataUrl = `data:image/png;base64,${imageData}`
+    const data = await response.json()
+
+    // 응답에서 이미지 데이터 추출
+    const parts = data.candidates?.[0]?.content?.parts ?? []
+    const imagePart = parts.find((p: { inlineData?: { mimeType: string; data: string } }) => p.inlineData?.mimeType?.startsWith('image/'))
+
+    if (!imagePart?.inlineData) {
+      return NextResponse.json({ error: '이미지가 생성되지 않았습니다. 프롬프트를 수정해보세요.' }, { status: 500 })
+    }
+
+    const dataUrl = `data:${imagePart.inlineData.mimeType};base64,${imagePart.inlineData.data}`
 
     return NextResponse.json({
       imageUrl: dataUrl,

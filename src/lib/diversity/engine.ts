@@ -15,8 +15,10 @@ import { TITLE_STRUCTURES, TITLE_BADA_POSITIONS, TITLE_TONES, TITLE_HOOKS } from
 import { QUOTE_TYPES } from '@/lib/layers/quotes'
 import { MEDICAL_MATERIAL_CATEGORIES, NON_MEDICAL_MATERIAL_CATEGORIES } from '@/lib/layers/materials'
 import { validatePersonaCombination } from './validator'
+import { checkDuplication } from './history'
+import { checkMaterialDuplication } from './material-history'
 import type { GenerateSettings } from '@/stores/generateStore'
-import type { ManuscriptCategory, PersonaSlots, PersonaVariables } from '@/types/manuscript'
+import type { ManuscriptCategory, Manuscript, PersonaSlots, PersonaVariables } from '@/types/manuscript'
 
 function pick<T>(arr: T[]): T {
   return arr[Math.floor(Math.random() * arr.length)]
@@ -127,10 +129,33 @@ export function resolveAppealPoint(current: string): string {
   return pick(points)
 }
 
-/** 전체 설정을 확정된 값으로 변환 */
-export function resolveAllSettings(settings: GenerateSettings): GenerateSettings {
-  const { category, typeId } = resolveCategory(settings)
-  const material = resolveMaterial(settings)
+/** 전체 설정을 확정된 값으로 변환 (중복방지 적용) */
+export function resolveAllSettings(settings: GenerateSettings, recentManuscripts?: Manuscript[]): GenerateSettings {
+  // 중복방지: 최대 5회 재시도
+  let category: ManuscriptCategory = '' as ManuscriptCategory
+  let typeId: string = ''
+  let material: { mode: string; category?: string; specific?: string } = { mode: 'auto' }
+
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const resolved = resolveCategory(settings)
+    category = resolved.category
+    typeId = resolved.typeId
+    material = resolveMaterial(settings)
+
+    if (!recentManuscripts || recentManuscripts.length === 0) break
+
+    const dupCheck = checkDuplication(
+      { category, typeId, material, persona: {} },
+      recentManuscripts
+    )
+    const matCheck = checkMaterialDuplication(
+      material.category ?? '',
+      recentManuscripts
+    )
+
+    if (!dupCheck.duplicate && !matCheck.duplicate) break
+  }
+
   const persona = resolvePersona()
   const variables = resolveVariables(settings)
   const appealPoint = resolveAppealPoint(settings.appealPoint || '')

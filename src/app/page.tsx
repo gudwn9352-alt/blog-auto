@@ -19,7 +19,28 @@ export default function BrandSelectPage() {
   const [brands, setBrands] = useState<Brand[]>([])
   const [loading, setLoading] = useState(true)
 
-  // 로고 업로드/수정
+  // 시스템 로고
+  const systemLogoRef = useRef<HTMLInputElement>(null)
+  const [systemLogo, setSystemLogo] = useState<string | null>(() => {
+    if (typeof window !== 'undefined') return localStorage.getItem('systemLogo')
+    return null
+  })
+
+  function handleSystemLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    if (file.size > 500_000) { toast.error('500KB 이하만 가능합니다'); return }
+    const reader = new FileReader()
+    reader.onload = () => {
+      const url = reader.result as string
+      setSystemLogo(url)
+      localStorage.setItem('systemLogo', url)
+    }
+    reader.readAsDataURL(file)
+    e.target.value = ''
+  }
+
+  // 브랜드 로고 업로드/수정
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [logoTargetId, setLogoTargetId] = useState<string | null>(null)
 
@@ -124,8 +145,21 @@ export default function BrandSelectPage() {
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-blue-50 flex items-center justify-center p-6">
       <div className="max-w-2xl w-full">
         <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 text-white text-2xl font-bold mb-4 shadow-lg">B</div>
-          <h1 className="text-3xl font-bold gradient-text">원고 생성 시스템</h1>
+          {systemLogo ? (
+            <div className="relative group inline-block mb-4">
+              <img src={systemLogo} alt="시스템 로고" className="w-16 h-16 rounded-2xl object-cover shadow-lg" />
+              <div className="absolute inset-0 bg-black/50 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                <button onClick={() => systemLogoRef.current?.click()} className="text-white text-xs bg-blue-500 px-2 py-1 rounded">변경</button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => systemLogoRef.current?.click()}
+              className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 text-white text-2xl font-bold mb-4 shadow-lg hover:opacity-90 transition-opacity"
+            >B</button>
+          )}
+          <input ref={systemLogoRef} type="file" accept="image/*" className="hidden" onChange={handleSystemLogoChange} />
+          <h1 className="text-3xl font-bold text-black">블로그 원고 이미지 생성 시스템</h1>
           <p className="text-gray-400 mt-2 text-sm">브랜드를 선택하여 시작하세요</p>
         </div>
 

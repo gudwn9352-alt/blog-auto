@@ -19,18 +19,19 @@ interface GenerateRequest {
     voiceGuide?: string
   }
   openProhibitions: string[]
+  recentManuscripts?: Array<{ category?: string; typeId?: string; materialSettings?: { category?: string }; persona?: Record<string, string> }>
 }
 
 export async function POST(req: Request) {
   try {
-    const { settings: rawSettings, brandInfo, openProhibitions }: GenerateRequest = await req.json()
+    const { settings: rawSettings, brandInfo, openProhibitions, recentManuscripts }: GenerateRequest = await req.json()
 
     if (!brandInfo?.name) {
       return NextResponse.json({ error: '브랜드 정보가 필요합니다' }, { status: 400 })
     }
 
-    // ★ 다양성 엔진: 모든 랜덤 값 확정
-    const settings = resolveAllSettings(rawSettings)
+    // ★ 다양성 엔진: 모든 랜덤 값 확정 (중복방지 포함)
+    const settings = resolveAllSettings(rawSettings, recentManuscripts as never)
 
     // 시스템 프롬프트 구성 (확정된 설정값 사용)
     const systemPrompt = buildWriterSystemPrompt(settings, brandInfo, openProhibitions)

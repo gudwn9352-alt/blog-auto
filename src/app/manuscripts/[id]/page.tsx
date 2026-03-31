@@ -11,6 +11,11 @@ import { Separator } from '@/components/ui/separator'
 import { getManuscript, updateManuscript, deleteManuscript, getBrands, getOpenProhibitions } from '@/lib/firebase/collections'
 import { PageHeader } from '@/components/layout/PageHeader'
 import { ImageManager } from '@/components/images/ImageManager'
+import { Progress } from '@/components/ui/progress'
+import { calculateSeoScore } from '@/lib/scoring/seo-score'
+import { calculateQualityScore } from '@/lib/scoring/quality-score'
+import { needsBrandApproval } from '@/lib/brand-track'
+import { useBrandStore } from '@/stores/brandStore'
 import type { Manuscript } from '@/types/manuscript'
 
 const STATUS_LABELS: Record<string, string> = {
@@ -28,6 +33,7 @@ const STATUS_LABELS: Record<string, string> = {
 export default function ManuscriptDetailPage() {
   const params = useParams()
   const router = useRouter()
+  const { selectedBrand } = useBrandStore()
   const id = params.id as string
 
   const [manuscript, setManuscript] = useState<Manuscript | null>(null)
@@ -317,6 +323,93 @@ export default function ManuscriptDetailPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* SEO 점수 + 품질 점수 */}
+      {manuscript.title && manuscript.body && (() => {
+        const seo = calculateSeoScore(manuscript.title, manuscript.body, selectedBrand?.name ?? '')
+        const quality = calculateQualityScore(manuscript.title, manuscript.body)
+        return (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <Card className="border-0 shadow-sm">
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-medium text-gray-700">SEO 점수</CardTitle>
+                  <span className={`text-lg font-bold ${seo.total >= 80 ? 'text-green-600' : seo.total >= 60 ? 'text-yellow-600' : 'text-red-500'}`}>{seo.total}점</span>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-1.5">
+                {seo.details.map((d, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <span className="text-[11px] text-gray-500 w-20 shrink-0">{d.item}</span>
+                    <Progress value={(d.score / d.max) * 100} className="h-1.5 flex-1" />
+                    <span className="text-[11px] text-gray-400 w-10 text-right">{d.score}/{d.max}</span>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+            <Card className="border-0 shadow-sm">
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-sm font-medium text-gray-700">품질 점수</CardTitle>
+                  <span className={`text-lg font-bold ${quality.total >= 80 ? 'text-green-600' : quality.total >= 60 ? 'text-yellow-600' : 'text-red-500'}`}>{quality.total}점</span>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-1.5">
+                {quality.details.map((d, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <span className="text-[11px] text-gray-500 w-20 shrink-0">{d.item}</span>
+                    <Progress value={(d.score / d.max) * 100} className="h-1.5 flex-1" />
+                    <span className="text-[11px] text-gray-400 w-10 text-right">{d.score}/{d.max}</span>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </div>
+        )
+      })()}
+
+      {/* CEO 승인 필요 알림 */}
+      {manuscript.category && manuscript.variables?.var6 &&
+        needsBrandApproval(manuscript.category, manuscript.variables.var6) && manuscript.status === 'approved' && (
+        <Card className="border-orange-200 bg-orange-50">
+          <CardContent className="pt-4 pb-3">
+            <p className="text-sm font-medium text-orange-700">브랜드 트랙 — CEO 승인 필요</p>
+            <p className="text-xs text-orange-600 mt-1">이 원고는 브랜드 노출이 강해서 CEO(브랜드 담당자) 승인이 필요합니다.</p>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* 수정 히스토리 */}
+      {manuscript.editHistory && manuscript.editHistory.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-gray-700">수정 이력 ({manuscript.editHistory.length}회)</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 max-h-60 overflow-y-auto">
+            {manuscript.editHistory.map((edit, i) => (
+              <div key={i} className="text-xs border rounded-lg p-2">
+                <div className="flex justify-between mb-1">
+                  <span className="text-gray-500">{new Date(edit.timestamp).toLocaleString('ko-KR')}</span>
+                  <Badge variant="outline" className="text-[10px]">{edit.editedBy === 'user' ? '직접 수정' : 'AI 수정'}</Badge>
+                </div>
+                <details className="cursor-pointer">
+                  <summary className="text-blue-600 hover:text-blue-800">변경 내용 보기</summary>
+                  <div className="mt-1 grid grid-cols-2 gap-2">
+                    <div className="bg-red-50 p-1.5 rounded text-[10px] max-h-32 overflow-y-auto">
+                      <p className="font-medium text-red-600 mb-0.5">수정 전</p>
+                      <p className="whitespace-pre-wrap text-gray-600">{edit.before.slice(0, 300)}{edit.before.length > 300 ? '...' : ''}</p>
+                    </div>
+                    <div className="bg-green-50 p-1.5 rounded text-[10px] max-h-32 overflow-y-auto">
+                      <p className="font-medium text-green-600 mb-0.5">수정 후</p>
+                      <p className="whitespace-pre-wrap text-gray-600">{edit.after.slice(0, 300)}{edit.after.length > 300 ? '...' : ''}</p>
+                    </div>
+                  </div>
+                </details>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
 
       {/* 이미지 관리 */}
       {(manuscript.status === 'approved' || manuscript.status === 'completed') && (
