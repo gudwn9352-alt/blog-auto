@@ -151,6 +151,10 @@ export function ImageEditor({ imageUrl, onSave, onCancel, initialMainCopy, initi
         ctx.fillStyle = '#3b82f6'
         if (item.type === 'box') {
           ctx.fillRect(item.x + item.width - 6, item.y + item.height - 6, 12, 12)
+        } else {
+          const tw = item.width ?? 200
+          const th = item.fontSize ? item.fontSize + 10 : 50
+          ctx.fillRect(item.x + tw / 2 - 6, item.y + th / 2 - 6, 12, 12)
         }
       }
     }
@@ -194,10 +198,17 @@ export function ImageEditor({ imageUrl, onSave, onCancel, initialMainCopy, initi
   }
 
   function isResizeHandle(item: DraggableItem, px: number, py: number): boolean {
-    if (item.type !== 'box') return false
-    const hx = item.x + item.width
-    const hy = item.y + item.height
-    return Math.abs(px - hx) < 12 && Math.abs(py - hy) < 12
+    if (item.type === 'box') {
+      const hx = item.x + item.width
+      const hy = item.y + item.height
+      return Math.abs(px - hx) < 15 && Math.abs(py - hy) < 15
+    }
+    // 텍스트도 우하단 리사이즈 핸들
+    const w = item.width ?? 200
+    const h = item.fontSize ? item.fontSize + 10 : 50
+    const hx = item.x + w / 2
+    const hy = item.y + h / 2
+    return Math.abs(px - hx) < 15 && Math.abs(py - hy) < 15
   }
 
   function handleMouseDown(e: React.MouseEvent) {
@@ -252,12 +263,17 @@ export function ImageEditor({ imageUrl, onSave, onCancel, initialMainCopy, initi
           ? { ...item, x: pos.x - dragOffset.x, y: pos.y - dragOffset.y }
           : item
       ))
-    } else if (resizing && selected?.type === 'box') {
-      setItems((prev) => prev.map((item) =>
-        item.id === selectedId
-          ? { ...item, width: Math.max(50, pos.x - item.x), height: Math.max(30, pos.y - item.y) }
-          : item
-      ))
+    } else if (resizing) {
+      setItems((prev) => prev.map((item) => {
+        if (item.id !== selectedId) return item
+        if (item.type === 'box') {
+          return { ...item, width: Math.max(50, pos.x - item.x), height: Math.max(30, pos.y - item.y) }
+        }
+        // 텍스트: width 조절 + fontSize 비례 조절
+        const newWidth = Math.max(100, (pos.x - item.x + (item.width ?? 200) / 2) * 2)
+        const scale = newWidth / (item.width ?? 200)
+        return { ...item, width: newWidth, fontSize: Math.max(12, Math.min(72, Math.round((item.fontSize ?? 48) * scale))) }
+      }))
     }
   }
 
@@ -413,6 +429,16 @@ export function ImageEditor({ imageUrl, onSave, onCancel, initialMainCopy, initi
                 <Label className="text-xs">Y 위치</Label>
                 <Input type="number" className="h-8 text-xs" value={Math.round(selected.y)}
                   onChange={(e) => updateSelected({ y: Number(e.target.value) })} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">가로</Label>
+                <Input type="number" className="h-8 text-xs" value={Math.round(selected.width ?? 200)}
+                  onChange={(e) => updateSelected({ width: Math.max(30, Number(e.target.value)) })} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">세로</Label>
+                <Input type="number" className="h-8 text-xs" value={Math.round(selected.height ?? 50)}
+                  onChange={(e) => updateSelected({ height: Math.max(20, Number(e.target.value)) })} />
               </div>
             </div>
           </>
