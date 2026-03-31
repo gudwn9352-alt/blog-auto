@@ -302,21 +302,75 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
           </div>
         )}
 
-        {/* 에디터 다이얼로그 */}
+        {/* 에디터 다이얼로그 — 전체화면 + 좌우 네비게이션 */}
         <Dialog open={editingIdx >= 0} onOpenChange={(open) => !open && setEditingIdx(-1)}>
-          <DialogContent className="max-w-4xl">
-            <DialogHeader>
-              <DialogTitle>이미지 편집 — {editingIdx + 1}번</DialogTitle>
-            </DialogHeader>
-            {editingIdx >= 0 && images[editingIdx]?.imageUrl && (
-              <ImageEditor
-                imageUrl={images[editingIdx].imageUrl!}
-                initialMainCopy={images[editingIdx].processingText?.mainCopy}
-                initialSubCopy={images[editingIdx].processingText?.subCopy}
-                onSave={handleEditorSave}
-                onCancel={() => setEditingIdx(-1)}
-              />
-            )}
+          <DialogContent className="max-w-[95vw] w-[95vw] max-h-[95vh] h-[95vh] p-0 overflow-hidden">
+            <div className="flex flex-col h-full">
+              {/* 상단 바 */}
+              <div className="flex items-center justify-between px-6 py-3 border-b bg-white shrink-0">
+                <div className="flex items-center gap-4">
+                  <button
+                    onClick={() => setEditingIdx(Math.max(0, editingIdx - 1))}
+                    disabled={editingIdx <= 0}
+                    className="w-9 h-9 rounded-full border flex items-center justify-center text-gray-500 hover:bg-gray-100 disabled:opacity-30"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 12L6 8L10 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  </button>
+                  <span className="text-sm font-bold text-gray-900">
+                    {editingIdx + 1} / {images.length}
+                  </span>
+                  <button
+                    onClick={() => setEditingIdx(Math.min(images.length - 1, editingIdx + 1))}
+                    disabled={editingIdx >= images.length - 1}
+                    className="w-9 h-9 rounded-full border flex items-center justify-center text-gray-500 hover:bg-gray-100 disabled:opacity-30"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 4L10 8L6 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                  </button>
+                </div>
+                <DialogTitle className="text-sm text-gray-600">이미지 편집</DialogTitle>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => setEditingIdx(-1)}>닫기</Button>
+                </div>
+              </div>
+
+              {/* 에디터 본체 */}
+              <div className="flex-1 overflow-auto p-6">
+                {editingIdx >= 0 && images[editingIdx]?.imageUrl && (
+                  <ImageEditor
+                    key={editingIdx}
+                    imageUrl={images[editingIdx].imageUrl!}
+                    initialMainCopy={images[editingIdx].processingText?.mainCopy}
+                    initialSubCopy={images[editingIdx].processingText?.subCopy}
+                    onSave={handleEditorSave}
+                    onCancel={() => setEditingIdx(-1)}
+                  />
+                )}
+                {editingIdx >= 0 && !images[editingIdx]?.imageUrl && (
+                  <div className="flex items-center justify-center h-full text-gray-400">
+                    이 이미지는 아직 생성되지 않았습니다
+                  </div>
+                )}
+              </div>
+
+              {/* 하단 썸네일 바 */}
+              <div className="flex items-center gap-2 px-6 py-3 border-t bg-gray-50 overflow-x-auto shrink-0">
+                {images.map((img, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setEditingIdx(i)}
+                    className={`shrink-0 w-14 h-14 rounded-lg border-2 overflow-hidden transition-all ${
+                      i === editingIdx ? 'border-blue-500 ring-2 ring-blue-200' : 'border-gray-200 hover:border-gray-400'
+                    }`}
+                  >
+                    {img.imageUrl ? (
+                      <img src={img.imageUrl} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full bg-gray-100 flex items-center justify-center text-[10px] text-gray-400">{i + 1}</div>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
       </CardContent>

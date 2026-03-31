@@ -296,13 +296,13 @@ export function ImageEditor({ imageUrl, onSave, onCancel, initialMainCopy, initi
   }
 
   return (
-    <div className="flex gap-4">
+    <div className="flex gap-6 items-start">
       {/* 캔버스 */}
       <div className="shrink-0">
         <canvas
           ref={canvasRef}
-          className="border border-gray-200 rounded-lg cursor-move"
-          style={{ width: 420, height: 420 }}
+          className="border border-gray-200 rounded-xl cursor-move shadow-sm"
+          style={{ width: 560, height: 560 }}
           onMouseDown={handleMouseDown}
           onDoubleClick={handleDoubleClick}
           onMouseMove={handleMouseMove}
@@ -319,7 +319,7 @@ export function ImageEditor({ imageUrl, onSave, onCancel, initialMainCopy, initi
       </div>
 
       {/* 편집 패널 */}
-      <div className="flex-1 space-y-3 max-w-xs">
+      <div className="flex-1 space-y-3 max-w-sm">
         {selected ? (
           <>
             <p className="text-xs font-medium text-gray-500">
