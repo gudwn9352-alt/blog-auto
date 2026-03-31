@@ -27,7 +27,7 @@ export async function POST(req: Request) {
         body: JSON.stringify({
           instances: [
             {
-              prompt: `${prompt}. High quality, professional, clean composition, suitable for Korean blog post. Korean people only for human subjects.`,
+              prompt: `${prompt}. High quality, professional, clean composition. Korean people only for human subjects. IMPORTANT: Do NOT include any text, letters, words, numbers, watermarks, or typography in the image. Pure visual image only, no text overlay.`,
             }
           ],
           parameters: {
@@ -52,7 +52,7 @@ export async function POST(req: Request) {
             contents: [
               {
                 parts: [
-                  { text: `Generate a high quality image: ${prompt}. Clean, professional, suitable for a blog post. Korean people only for human subjects.` }
+                  { text: `Generate a high quality image: ${prompt}. Clean, professional. Korean people only for human subjects. IMPORTANT: Do NOT include any text, letters, words, numbers, or typography in the image. Pure visual only.` }
                 ]
               }
             ],

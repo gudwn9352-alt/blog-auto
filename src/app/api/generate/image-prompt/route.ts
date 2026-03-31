@@ -51,8 +51,10 @@ export async function POST(req: Request) {
 3. 이미지 설명(promptKo)은 한국어로, 생성 프롬프트(promptEn)는 영어로 작성합니다.
 4. 인물이 포함된 이미지의 경우 반드시 "Korean man" 또는 "Korean woman"을 프롬프트에 포함합니다.
 5. imageType은 "photo", "illustration", "infographic", "icon", "chart" 중 적합한 것을 선택합니다.
-6. processingText의 mainCopy는 최대 15자, subCopy는 최대 20자로 제한합니다.
+6. processingText의 mainCopy는 최대 15자(한글만), subCopy는 최대 20자(한글만)로 제한합니다.
 7. 총 ${imageCount}개의 이미지 프롬프트를 생성합니다.
+8. ★ 매우 중요: promptEn에 이미지 안에 텍스트를 넣으라는 지시를 절대 포함하지 마세요. "no text, no typography, no letters, no words in the image" 를 반드시 포함하세요. 텍스트는 에디터에서 별도로 추가합니다.
+9. processingText는 이미지 위에 에디터로 올릴 텍스트입니다 — 한글만 사용, 영문 금지.
 
 JSON 형식으로만 응답하세요:
 {
