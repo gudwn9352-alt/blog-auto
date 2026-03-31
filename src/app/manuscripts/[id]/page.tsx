@@ -45,6 +45,15 @@ export default function ManuscriptDetailPage() {
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
+    // Google Drive 토큰 수신 (OAuth 콜백에서 리다이렉트됨)
+    const params = new URLSearchParams(window.location.search)
+    const gdriveToken = params.get('gdrive_token')
+    if (gdriveToken) {
+      localStorage.setItem('gdrive_token', gdriveToken)
+      window.history.replaceState({}, '', `/manuscripts/${id}`)
+      toast.success('Google 드라이브 연결 완료! 내보내기를 다시 클릭하세요.')
+    }
+
     loadManuscript()
   }, [id])
 
@@ -176,9 +185,7 @@ export default function ManuscriptDetailPage() {
     const token = localStorage.getItem('gdrive_token')
     if (!token) {
       toast.info('Google 드라이브 로그인이 필요합니다.')
-      // 현재 원고 ID를 저장해서 로그인 후 돌아오기
-      localStorage.setItem('gdrive_export_after_login', manuscript.id!)
-      window.location.href = '/api/auth/google'
+      window.location.href = `/api/auth/google?returnTo=${encodeURIComponent(`/manuscripts/${manuscript.id}`)}`
       return
     }
 

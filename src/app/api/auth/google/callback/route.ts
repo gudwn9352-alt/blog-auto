@@ -20,7 +20,10 @@ export async function GET(req: Request) {
 
     // 토큰을 클라이언트로 전달 (쿠키 대신 URL 파라미터)
     const accessToken = tokens.access_token ?? ''
-    const redirectUrl = `/dashboard?gdrive_token=${encodeURIComponent(accessToken)}`
+    // state 파라미터에서 원래 페이지 경로 복원
+    const state = url.searchParams.get('state') ?? ''
+    const returnPath = state || '/dashboard'
+    const redirectUrl = `${returnPath}${returnPath.includes('?') ? '&' : '?'}gdrive_token=${encodeURIComponent(accessToken)}`
 
     return NextResponse.redirect(new URL(redirectUrl, req.url))
   } catch (error: unknown) {
