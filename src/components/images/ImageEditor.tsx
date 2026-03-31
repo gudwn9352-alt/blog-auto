@@ -307,30 +307,32 @@ export function ImageEditor({ imageUrl, onSave, onCancel, initialMainCopy, initi
   }
 
   return (
-    <div className="flex flex-col lg:flex-row gap-6 items-start w-full">
-      {/* 캔버스 */}
-      <div className="w-full lg:w-auto lg:shrink-0">
+    <div className="flex flex-col gap-4 w-full">
+      {/* 캔버스 — 전체 가로 폭 사용 */}
+      <div className="w-full flex justify-center">
         <canvas
           ref={canvasRef}
-          className="border border-gray-200 rounded-xl cursor-move shadow-sm w-full max-w-[600px] lg:w-[560px]"
-          style={{ aspectRatio: '1/1' }}
+          className="border border-gray-200 rounded-xl cursor-move shadow-sm"
+          style={{ width: '100%', maxWidth: 700, aspectRatio: '1/1' }}
           onMouseDown={handleMouseDown}
           onDoubleClick={handleDoubleClick}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
         />
-        <div className="flex gap-1.5 mt-2">
-          <Button size="sm" variant="outline" onClick={addBox} className="text-xs">+ 박스</Button>
-          <Button size="sm" variant="outline" onClick={addText} className="text-xs">+ 텍스트</Button>
-          {selectedId && (
-            <Button size="sm" variant="destructive" onClick={deleteSelected} className="text-xs">삭제</Button>
-          )}
-        </div>
       </div>
 
-      {/* 편집 패널 */}
-      <div className="flex-1 space-y-3 w-full lg:max-w-sm">
+      {/* 도구 바 */}
+      <div className="flex gap-1.5 justify-center">
+        <Button size="sm" variant="outline" onClick={addBox} className="text-xs">+ 박스</Button>
+        <Button size="sm" variant="outline" onClick={addText} className="text-xs">+ 텍스트</Button>
+        {selectedId && (
+          <Button size="sm" variant="destructive" onClick={deleteSelected} className="text-xs">삭제</Button>
+        )}
+      </div>
+
+      {/* 편집 패널 — 가로로 펼침 */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 w-full bg-gray-50 rounded-xl p-4">
         {selected ? (
           <>
             <p className="text-xs font-medium text-gray-500">
@@ -418,7 +420,7 @@ export function ImageEditor({ imageUrl, onSave, onCancel, initialMainCopy, initi
           <p className="text-xs text-gray-400 py-4">캔버스에서 항목을 클릭하세요</p>
         )}
 
-        <div className="flex gap-2 pt-3 border-t">
+        <div className="flex gap-2 col-span-2 md:col-span-4">
           <Button size="sm" onClick={handleSave} className="flex-1">저장</Button>
           <Button size="sm" variant="ghost" onClick={onCancel}>취소</Button>
         </div>
