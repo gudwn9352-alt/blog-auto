@@ -149,6 +149,7 @@ export default function GeneratePage() {
               wordCountMin: (data.resolvedSettings.wordCount as { min: number }).min,
               wordCountMax: (data.resolvedSettings.wordCount as { max: number }).max,
               manuscriptMode: settings.manuscriptMode,
+              existingTitles: results.filter((r) => r.status === 'pass').map((r) => r.title),
             }),
           })
           reviewResult = await reviewRes.json()
