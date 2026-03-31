@@ -198,16 +198,39 @@ export function ImageEditor({ imageUrl, onSave, onCancel, initialMainCopy, initi
         setResizing(true)
       } else {
         setDragging(true)
-        if (hit.type === 'box') {
-          setDragOffset({ x: pos.x - hit.x, y: pos.y - hit.y })
-        } else {
-          setDragOffset({ x: pos.x - hit.x, y: pos.y - hit.y })
-        }
+        setDragOffset({ x: pos.x - hit.x, y: pos.y - hit.y })
       }
     } else {
       setSelectedId(null)
     }
   }
+
+  // 더블클릭 → 텍스트 수정
+  function handleDoubleClick(e: React.MouseEvent) {
+    const pos = getCanvasPos(e)
+    const hit = hitTest(pos.x, pos.y)
+    if (hit?.type === 'text') {
+      setSelectedId(hit.id)
+      const newText = prompt('텍스트 수정', hit.text ?? '')
+      if (newText !== null) {
+        setItems((prev) => prev.map((item) =>
+          item.id === hit.id ? { ...item, text: newText.slice(0, 20) } : item
+        ))
+      }
+    }
+  }
+
+  // Delete 키 → 선택 항목 삭제
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Delete' && selectedId) {
+        setItems((prev) => prev.filter((i) => i.id !== selectedId))
+        setSelectedId(null)
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [selectedId])
 
   function handleMouseMove(e: React.MouseEvent) {
     if (!selectedId) return
@@ -281,6 +304,7 @@ export function ImageEditor({ imageUrl, onSave, onCancel, initialMainCopy, initi
           className="border border-gray-200 rounded-lg cursor-move"
           style={{ width: 420, height: 420 }}
           onMouseDown={handleMouseDown}
+          onDoubleClick={handleDoubleClick}
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onMouseLeave={handleMouseUp}
