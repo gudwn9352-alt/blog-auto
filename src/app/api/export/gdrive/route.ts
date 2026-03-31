@@ -1,34 +1,39 @@
 import { NextResponse } from 'next/server'
 import { google } from 'googleapis'
+import { Readable } from 'stream'
 
 interface ExportRequest {
   title: string
   body: string
   brandName: string
   manuscriptMode: 'brand' | 'thirdparty'
-  images?: Array<{ imageUrl: string; position: number }>
+  docxBase64?: string
+  images?: Array<{ imageUrl: string; position: number; fileName?: string }>
   accessToken: string
 }
 
-// 구글 드라이브 폴더 경로
-// 바이럴/1.브랜드 원고 미사용
-// 바이럴/3.제3자 원고 미사용
-async function findOrCreateFolder(
+// 기존 폴더 찾기 (생성 안 함)
+async function findFolder(
   drive: ReturnType<typeof google.drive>,
   parentId: string,
   folderName: string
-): Promise<string> {
-  // 기존 폴더 찾기
+): Promise<string | null> {
   const res = await drive.files.list({
     q: `name='${folderName}' and '${parentId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`,
     fields: 'files(id)',
   })
-
   if (res.data.files && res.data.files.length > 0) {
     return res.data.files[0].id!
   }
+  return null
+}
 
-  // 없으면 생성
+// 폴더 생성
+async function createFolder(
+  drive: ReturnType<typeof google.drive>,
+  parentId: string,
+  folderName: string
+): Promise<string> {
   const folder = await drive.files.create({
     requestBody: {
       name: folderName,
@@ -37,19 +42,17 @@ async function findOrCreateFolder(
     },
     fields: 'id',
   })
-
   return folder.data.id!
 }
 
 export async function POST(req: Request) {
   try {
-    const { title, body, brandName, manuscriptMode, images, accessToken }: ExportRequest = await req.json()
+    const { title, body, brandName, manuscriptMode, docxBase64, images, accessToken }: ExportRequest = await req.json()
 
     if (!accessToken) {
       return NextResponse.json({ error: 'Google 인증이 필요합니다' }, { status: 401 })
     }
 
-    // OAuth2 클라이언트 설정
     const oauth2Client = new google.auth.OAuth2(
       process.env.GOOGLE_CLIENT_ID,
       process.env.GOOGLE_CLIENT_SECRET,
@@ -58,65 +61,80 @@ export async function POST(req: Request) {
 
     const drive = google.drive({ version: 'v3', auth: oauth2Client })
 
-    // 폴더 경로 탐색: 내 드라이브 → 바이럴 → 1.브랜드 원고 미사용 or 3.제3자 원고 미사용
-    const viralFolder = await findOrCreateFolder(drive, 'root', '바이럴')
+    // 1. 기존 바이럴 폴더 찾기
+    const viralFolder = await findFolder(drive, 'root', '바이럴')
+    if (!viralFolder) {
+      return NextResponse.json({ error: '"바이럴" 폴더를 찾을 수 없습니다. 구글 드라이브에 "바이럴" 폴더가 있는지 확인하세요.' }, { status: 404 })
+    }
 
+    // 2. 브랜드/제3자 폴더 찾기 (기존 폴더 사용)
     const targetFolderName = manuscriptMode === 'brand'
       ? '1.브랜드 원고 미사용'
       : '3.제3자 원고 미사용'
-    const targetFolder = await findOrCreateFolder(drive, viralFolder, targetFolderName)
+    const targetFolder = await findFolder(drive, viralFolder, targetFolderName)
+    if (!targetFolder) {
+      return NextResponse.json({ error: `"${targetFolderName}" 폴더를 찾을 수 없습니다.` }, { status: 404 })
+    }
 
-    // 원고별 폴더 생성 (제목으로)
-    const safeTitle = title.replace(/[/\\?%*:|"<>]/g, '_').slice(0, 50)
-    const manuscriptFolder = await findOrCreateFolder(drive, targetFolder, safeTitle)
+    // 3. 날짜_제목 폴더 생성
+    const now = new Date()
+    const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`
+    const safeTitle = (title ?? '원고').replace(/[/\\?%*:|"<>]/g, '_').slice(0, 30)
+    const folderName = `${dateStr}_${safeTitle}`
+    const manuscriptFolder = await createFolder(drive, targetFolder, folderName)
 
-    // 1. 원고 텍스트 파일 업로드
-    const textContent = `${title}\n\n${body}`
-    await drive.files.create({
-      requestBody: {
-        name: `${safeTitle}.txt`,
-        parents: [manuscriptFolder],
-      },
-      media: {
-        mimeType: 'text/plain; charset=utf-8',
-        body: textContent,
-      },
-    })
+    // 4. 원고 .docx 업로드
+    if (docxBase64) {
+      const matches = docxBase64.match(/base64,(.+)/)
+      if (matches) {
+        const buffer = Buffer.from(matches[1], 'base64')
+        await drive.files.create({
+          requestBody: {
+            name: `${safeTitle}.docx`,
+            parents: [manuscriptFolder],
+          },
+          media: {
+            mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            body: Readable.from(buffer),
+          },
+        })
+      }
+    } else {
+      // docx 없으면 텍스트 파일로 대체
+      await drive.files.create({
+        requestBody: {
+          name: `${safeTitle}.txt`,
+          parents: [manuscriptFolder],
+        },
+        media: {
+          mimeType: 'text/plain; charset=utf-8',
+          body: `${title}\n\n${body}`,
+        },
+      })
+    }
 
-    // 2. 이미지 업로드
+    // 5. 이미지 업로드
     let uploadedImages = 0
     if (images && images.length > 0) {
       for (const img of images) {
         if (!img.imageUrl) continue
-
         try {
-          let imageBuffer: Buffer
-          let mimeType = 'image/png'
+          const matches = img.imageUrl.match(/data:(image\/\w+);base64,(.+)/)
+          if (!matches) continue
 
-          if (img.imageUrl.startsWith('data:')) {
-            // Base64 data URL
-            const matches = img.imageUrl.match(/data:(image\/\w+);base64,(.+)/)
-            if (matches) {
-              mimeType = matches[1]
-              imageBuffer = Buffer.from(matches[2], 'base64')
-            } else continue
-          } else {
-            // Firebase Storage URL → fetch
-            const imgRes = await fetch(img.imageUrl)
-            const arrayBuf = await imgRes.arrayBuffer()
-            imageBuffer = Buffer.from(arrayBuf)
-            mimeType = imgRes.headers.get('content-type') ?? 'image/png'
-          }
-
+          const mimeType = matches[1]
+          const buffer = Buffer.from(matches[2], 'base64')
           const ext = mimeType.split('/')[1] ?? 'png'
+          const fileName = img.fileName ?? `이미지${img.position + 1}.${ext}`
+
           await drive.files.create({
             requestBody: {
-              name: `이미지${img.position + 1}.${ext}`,
+              name: fileName,
               parents: [manuscriptFolder],
             },
             media: {
               mimeType,
-              body: require('stream').Readable.from(imageBuffer),
+              body: Readable.from(buffer),
             },
           })
           uploadedImages++
@@ -129,7 +147,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       success: true,
       folder: targetFolderName,
-      manuscriptFolder: safeTitle,
+      manuscriptFolder: folderName,
       uploadedImages,
     })
   } catch (error: unknown) {

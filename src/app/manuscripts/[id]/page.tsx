@@ -168,50 +168,88 @@ export default function ManuscriptDetailPage() {
     }
   }
 
-  // 원고 내보내기 (날짜_제목 폴더에 원고+이미지 ZIP)
+  // 원고 내보내기 → 구글 드라이브 (브랜드/제3자 폴더 자동 분류)
   async function handleExportAll() {
     if (!manuscript) return
+
+    // Google Drive 토큰 확인
+    const token = localStorage.getItem('gdrive_token')
+    if (!token) {
+      toast.info('Google 드라이브 연결이 필요합니다. 로그인 페이지로 이동합니다.')
+      window.location.href = '/api/auth/google'
+      return
+    }
+
     try {
-      const JSZip = (await import('jszip')).default
-      const zip = new JSZip()
+      toast.info('구글 드라이브에 내보내기 중...')
 
-      const now = new Date()
-      const dateStr = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`
-      const safeTitle = (manuscript.title ?? '원고').replace(/[/\\?%*:|"<>]/g, '_').slice(0, 30)
-      const folderName = `${dateStr}_${safeTitle}`
+      const mode = (manuscript as unknown as Record<string, unknown>).manuscriptMode as string ?? 'thirdparty'
 
-      // 원고 텍스트
-      zip.file(`${folderName}/원고.txt`, `${manuscript.title}\n\n${manuscript.body}`)
+      // 원고 .docx 생성
+      const docxRes = await fetch('/api/download/docx', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: manuscript.title,
+          body: manuscript.body,
+          brandName: selectedBrand?.name ?? '더바다',
+        }),
+      })
+      if (!docxRes.ok) throw new Error('.docx 생성 실패')
+      const docxBlob = await docxRes.blob()
 
-      // 이미지 (있으면)
+      // 이미지 수집
       const imgs = manuscript.images ?? []
-      if (imgs.length > 0) {
-        let imgCount = 0
-        for (let i = 0; i < imgs.length; i++) {
-          if (!imgs[i]?.imageUrl) continue
-          try {
-            const res = await fetch(imgs[i].imageUrl!)
-            const blob = await res.blob()
-            zip.file(`${folderName}/이미지${i + 1}.png`, blob)
-            imgCount++
-          } catch { /* skip */ }
-        }
-        if (imgCount > 0) {
-          toast.info(`이미지 ${imgCount}장 포함`)
-        }
+      const imageFiles: Array<{ name: string; blob: Blob }> = []
+      for (let i = 0; i < imgs.length; i++) {
+        if (!imgs[i]?.imageUrl) continue
+        try {
+          const res = await fetch(imgs[i].imageUrl!)
+          const blob = await res.blob()
+          imageFiles.push({ name: `이미지${i + 1}.png`, blob })
+        } catch { /* skip */ }
       }
 
-      const zipBlob = await zip.generateAsync({ type: 'blob' })
-      const url = URL.createObjectURL(zipBlob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `${folderName}.zip`
-      a.click()
-      URL.revokeObjectURL(url)
-      toast.success(`내보내기 완료: ${folderName}.zip`)
-    } catch {
-      toast.error('내보내기에 실패했습니다')
+      // 구글 드라이브 API로 업로드
+      const res = await fetch('/api/export/gdrive', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: manuscript.title,
+          body: manuscript.body,
+          brandName: selectedBrand?.name ?? '더바다',
+          manuscriptMode: mode,
+          docxBase64: await blobToBase64(docxBlob),
+          images: await Promise.all(imageFiles.map(async (f, i) => ({
+            imageUrl: await blobToBase64(f.blob),
+            position: i,
+            fileName: f.name,
+          }))),
+          accessToken: token,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        if (res.status === 401) {
+          localStorage.removeItem('gdrive_token')
+          toast.error('Google 인증이 만료됐습니다. 다시 로그인해주세요.')
+          return
+        }
+        throw new Error(data.error)
+      }
+      const imgMsg = imageFiles.length > 0 ? `, 이미지 ${imageFiles.length}장` : ''
+      toast.success(`구글 드라이브 내보내기 완료! (${data.folder}/${data.manuscriptFolder}${imgMsg})`)
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : '내보내기 실패')
     }
+  }
+
+  function blobToBase64(blob: Blob): Promise<string> {
+    return new Promise((resolve) => {
+      const reader = new FileReader()
+      reader.onloadend = () => resolve(reader.result as string)
+      reader.readAsDataURL(blob)
+    })
   }
 
   async function handleAiFix() {
