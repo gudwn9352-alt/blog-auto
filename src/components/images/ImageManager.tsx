@@ -88,6 +88,8 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
         body: JSON.stringify({
           prompt: img.promptEn,
           imageType: img.imageType,
+          manuscriptId,
+          imageIndex: idx,
         }),
       })
       const data = await res.json()
@@ -133,7 +135,7 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
       try {
         const res = await fetch('/api/generate/image', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt: local[i].promptEn, imageType: local[i].imageType }),
+          body: JSON.stringify({ prompt: local[i].promptEn, imageType: local[i].imageType, manuscriptId, imageIndex: i }),
         })
         const data = await res.json()
         if (res.ok && data.imageUrl) {
@@ -145,7 +147,7 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
           await new Promise(r => setTimeout(r, 2000))
           const res2 = await fetch('/api/generate/image', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt: local[i].promptEn, imageType: local[i].imageType }),
+            body: JSON.stringify({ prompt: local[i].promptEn, imageType: local[i].imageType, manuscriptId, imageIndex: i }),
           })
           const data2 = await res2.json()
           if (res2.ok && data2.imageUrl) {
