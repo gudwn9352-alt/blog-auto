@@ -193,6 +193,101 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
     toast.success('이미지 편집 저장 완료')
   }
 
+  // 전체 편집 완료 — 모든 이미지에 텍스트 자동 합성
+  async function handleApplyAllText() {
+    const confirmed = confirm('모든 이미지에 텍스트(메인 카피, 보조 문구)를 자동 합성합니다.\n기존 편집은 덮어씌워집니다. 진행하시겠습니까?')
+    if (!confirmed) return
+
+    setGenerating(true)
+    const local = [...displayImages]
+    let ok = 0
+
+    for (let i = 0; i < local.length; i++) {
+      const img = local[i]
+      if (!img.imageUrl) continue
+      if (!img.processingText?.mainCopy && !img.processingText?.subCopy) { ok++; continue }
+
+      setGeneratingIdx(i)
+
+      try {
+        // Canvas에서 텍스트 합성
+        const canvas = document.createElement('canvas')
+        const ctx = canvas.getContext('2d')
+        if (!ctx) continue
+
+        const size = 600
+        canvas.width = size
+        canvas.height = size
+
+        // 배경 이미지 로드
+        const bgImg = await loadImage(img.imageUrl)
+        ctx.drawImage(bgImg, 0, 0, size, size)
+
+        // 하단 오버레이
+        if (img.processingText?.mainCopy || img.processingText?.subCopy) {
+          ctx.fillStyle = 'rgba(0,0,0,0.45)'
+          ctx.fillRect(0, size - 180, size, 180)
+        }
+
+        // 텍스트 그림자
+        ctx.shadowColor = 'rgba(0,0,0,0.7)'
+        ctx.shadowBlur = 6
+        ctx.shadowOffsetX = 2
+        ctx.shadowOffsetY = 2
+        ctx.textAlign = 'center'
+
+        // 메인 카피
+        if (img.processingText?.mainCopy) {
+          ctx.fillStyle = '#ffffff'
+          ctx.font = 'bold 44px "Noto Sans KR", sans-serif'
+          ctx.fillText(img.processingText.mainCopy, size / 2, size - 110, size - 80)
+        }
+
+        // 보조 문구
+        if (img.processingText?.subCopy) {
+          ctx.fillStyle = '#dddddd'
+          ctx.font = '22px "Noto Sans KR", sans-serif'
+          ctx.fillText(img.processingText.subCopy, size / 2, size - 60, size - 80)
+        }
+
+        ctx.shadowColor = 'transparent'
+
+        const editedUrl = canvas.toDataURL('image/png')
+
+        // 서버에 파일 저장
+        let imageUrl = editedUrl
+        try {
+          const uploadRes = await fetch('/api/upload/image', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ manuscriptId, imageIndex: i, dataUrl: editedUrl }),
+          })
+          const uploadData = await uploadRes.json()
+          if (uploadData.imageUrl) imageUrl = uploadData.imageUrl
+        } catch {}
+
+        local[i] = { ...local[i], imageUrl, edited: true }
+        setLocalImages([...local])
+        ok++
+      } catch {}
+    }
+
+    onImagesChange([...local])
+    setGenerating(false)
+    setGeneratingIdx(-1)
+    toast.success(`${ok}장 텍스트 합성 완료`)
+  }
+
+  function loadImage(src: string): Promise<HTMLImageElement> {
+    return new Promise((resolve, reject) => {
+      const img = new Image()
+      img.crossOrigin = 'anonymous'
+      img.onload = () => resolve(img)
+      img.onerror = reject
+      img.src = src
+    })
+  }
+
   // 이미지 재생성
   async function handleRegenerate(idx: number) {
     const img = images[idx]
@@ -290,9 +385,14 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
               </Button>
             )}
             {images.length > 0 && displayImages.some((img) => img.imageUrl) && (
-              <Button size="sm" variant="outline" onClick={handleDownloadAllImages}>
-                이미지 ZIP
-              </Button>
+              <>
+                <Button size="sm" variant="outline" onClick={handleApplyAllText} disabled={generating}>
+                  전체 텍스트 합성
+                </Button>
+                <Button size="sm" variant="outline" onClick={handleDownloadAllImages}>
+                  이미지 ZIP
+                </Button>
+              </>
             )}
           </div>
         </div>
