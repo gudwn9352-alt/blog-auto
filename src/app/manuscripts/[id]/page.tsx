@@ -151,7 +151,7 @@ export default function ManuscriptDetailPage() {
         body: JSON.stringify({
           title: manuscript.title,
           body: manuscript.body,
-          brandName: '더바다',
+          brandName: selectedBrand?.name ?? '더바다',
         }),
       })
       if (!res.ok) throw new Error('다운로드 실패')
@@ -165,6 +165,52 @@ export default function ManuscriptDetailPage() {
       toast.success('다운로드 완료')
     } catch {
       toast.error('다운로드에 실패했습니다')
+    }
+  }
+
+  // 원고 내보내기 (날짜_제목 폴더에 원고+이미지 ZIP)
+  async function handleExportAll() {
+    if (!manuscript) return
+    try {
+      const JSZip = (await import('jszip')).default
+      const zip = new JSZip()
+
+      const now = new Date()
+      const dateStr = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`
+      const safeTitle = (manuscript.title ?? '원고').replace(/[/\\?%*:|"<>]/g, '_').slice(0, 30)
+      const folderName = `${dateStr}_${safeTitle}`
+
+      // 원고 텍스트
+      zip.file(`${folderName}/원고.txt`, `${manuscript.title}\n\n${manuscript.body}`)
+
+      // 이미지 (있으면)
+      const imgs = manuscript.images ?? []
+      if (imgs.length > 0) {
+        let imgCount = 0
+        for (let i = 0; i < imgs.length; i++) {
+          if (!imgs[i]?.imageUrl) continue
+          try {
+            const res = await fetch(imgs[i].imageUrl!)
+            const blob = await res.blob()
+            zip.file(`${folderName}/이미지${i + 1}.png`, blob)
+            imgCount++
+          } catch { /* skip */ }
+        }
+        if (imgCount > 0) {
+          toast.info(`이미지 ${imgCount}장 포함`)
+        }
+      }
+
+      const zipBlob = await zip.generateAsync({ type: 'blob' })
+      const url = URL.createObjectURL(zipBlob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${folderName}.zip`
+      a.click()
+      URL.revokeObjectURL(url)
+      toast.success(`내보내기 완료: ${folderName}.zip`)
+    } catch {
+      toast.error('내보내기에 실패했습니다')
     }
   }
 
@@ -346,7 +392,7 @@ export default function ManuscriptDetailPage() {
                 다운로드
               </Button>
               {manuscript.status === 'approved' && (
-                <Button size="sm" variant="outline" onClick={handleExportGDrive}>
+                <Button size="sm" variant="outline" onClick={handleExportAll}>
                   내보내기
                 </Button>
               )}

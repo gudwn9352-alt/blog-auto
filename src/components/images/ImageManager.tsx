@@ -172,10 +172,11 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
     toast.success(`이미지 ${ok}/${local.length}장 생성 완료`)
   }
 
-  // 에디터 저장
+  // 에디터 저장 — 편집된 이미지를 서버에 파일로 저장
   async function handleEditorSave(editedUrl: string) {
     let imageUrl = editedUrl
     try {
+      // 편집된 이미지를 서버에 파일로 저장
       const uploadRes = await fetch('/api/upload/image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -183,7 +184,7 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
       })
       const uploadData = await uploadRes.json()
       if (uploadData.imageUrl) imageUrl = uploadData.imageUrl
-    } catch { /* 업로드 실패 시 Base64 유지 */ }
+    } catch { /* 실패 시 Base64 유지 */ }
 
     const updated = [...displayImages]
     updated[editingIdx] = { ...updated[editingIdx], imageUrl, edited: true }
