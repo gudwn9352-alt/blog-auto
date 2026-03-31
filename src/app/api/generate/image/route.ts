@@ -18,22 +18,21 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Gemini API 키가 없습니다' }, { status: 500 })
     }
 
-    // Gemini 2.0 Flash로 이미지 생성
+    // Imagen 4.0으로 이미지 생성 (고품질)
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/imagen-4.0-generate-001:predict?key=${apiKey}`,
       {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          contents: [
+          instances: [
             {
-              parts: [
-                { text: `Generate a high quality image: ${prompt}. The image should be clean, professional, and suitable for a blog post. Korean people only for human subjects.` }
-              ]
+              prompt: `${prompt}. High quality, professional, clean composition, suitable for Korean blog post. Korean people only for human subjects.`,
             }
           ],
-          generationConfig: {
-            responseModalities: ['TEXT', 'IMAGE'],
+          parameters: {
+            sampleCount: 1,
+            aspectRatio: '1:1',
           }
         }),
       }
@@ -41,25 +40,62 @@ export async function POST(req: Request) {
 
     if (!response.ok) {
       const err = await response.json()
-      console.error('[Gemini 오류]', JSON.stringify(err))
-      return NextResponse.json({ error: err.error?.message ?? '이미지 생성 실패' }, { status: 500 })
+      console.error('[Imagen 오류]', JSON.stringify(err))
+
+      // Imagen 실패 시 Gemini 2.5 Flash Image로 폴백
+      const fallbackResponse = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${apiKey}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [
+                  { text: `Generate a high quality image: ${prompt}. Clean, professional, suitable for a blog post. Korean people only for human subjects.` }
+                ]
+              }
+            ],
+            generationConfig: {
+              responseModalities: ['TEXT', 'IMAGE'],
+            }
+          }),
+        }
+      )
+
+      if (!fallbackResponse.ok) {
+        return NextResponse.json({ error: err.error?.message ?? '이미지 생성 실패' }, { status: 500 })
+      }
+
+      const fallbackData = await fallbackResponse.json()
+      const parts = fallbackData.candidates?.[0]?.content?.parts ?? []
+      const imagePart = parts.find((p: { inlineData?: { mimeType: string; data: string } }) => p.inlineData?.mimeType?.startsWith('image/'))
+
+      if (!imagePart?.inlineData) {
+        return NextResponse.json({ error: '이미지 생성 실패 (폴백 포함)' }, { status: 500 })
+      }
+
+      return NextResponse.json({
+        imageUrl: `data:${imagePart.inlineData.mimeType};base64,${imagePart.inlineData.data}`,
+        imageType,
+        model: 'gemini-2.5-flash-image',
+      })
     }
 
     const data = await response.json()
 
-    // 응답에서 이미지 데이터 추출
-    const parts = data.candidates?.[0]?.content?.parts ?? []
-    const imagePart = parts.find((p: { inlineData?: { mimeType: string; data: string } }) => p.inlineData?.mimeType?.startsWith('image/'))
-
-    if (!imagePart?.inlineData) {
-      return NextResponse.json({ error: '이미지가 생성되지 않았습니다. 프롬프트를 수정해보세요.' }, { status: 500 })
+    // Imagen 응답에서 이미지 추출
+    const predictions = data.predictions ?? []
+    if (predictions.length === 0 || !predictions[0].bytesBase64Encoded) {
+      return NextResponse.json({ error: '이미지 데이터 없음' }, { status: 500 })
     }
 
-    const dataUrl = `data:${imagePart.inlineData.mimeType};base64,${imagePart.inlineData.data}`
+    const dataUrl = `data:image/png;base64,${predictions[0].bytesBase64Encoded}`
 
     return NextResponse.json({
       imageUrl: dataUrl,
       imageType,
+      model: 'imagen-4.0-generate-001',
     })
   } catch (error: unknown) {
     console.error('[이미지 생성 오류]', error)
