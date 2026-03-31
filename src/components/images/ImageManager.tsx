@@ -115,34 +115,43 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
     }
   }
 
-  // 전체 이미지 일괄 생성 (실패 시 1회 재시도)
+  // 전체 이미지 일괄 생성
   async function handleGenerateAll() {
     setGenerating(true)
-    const failed: number[] = []
-    for (let i = 0; i < images.length; i++) {
-      if (images[i].imageUrl) continue
+    const local = [...images]
+    let ok = 0
+    for (let i = 0; i < local.length; i++) {
+      if (local[i].imageUrl) { ok++; continue }
       setGeneratingIdx(i)
       try {
-        await handleGenerateImage(i)
-      } catch {
-        failed.push(i)
-      }
-      // API 부하 방지 1초 대기
-      await new Promise((r) => setTimeout(r, 1000))
-    }
-    // 실패한 건 1회 재시도
-    for (const i of failed) {
-      if (images[i]?.imageUrl) continue
-      setGeneratingIdx(i)
-      try {
-        await handleGenerateImage(i)
-      } catch { /* skip */ }
-      await new Promise((r) => setTimeout(r, 1000))
+        const res = await fetch('/api/generate/image', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt: local[i].promptEn, imageType: local[i].imageType }),
+        })
+        const data = await res.json()
+        if (res.ok && data.imageUrl) {
+          local[i] = { ...local[i], imageUrl: data.imageUrl }
+          onImagesChange([...local])
+          ok++
+        } else {
+          await new Promise(r => setTimeout(r, 2000))
+          const res2 = await fetch('/api/generate/image', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt: local[i].promptEn, imageType: local[i].imageType }),
+          })
+          const data2 = await res2.json()
+          if (res2.ok && data2.imageUrl) {
+            local[i] = { ...local[i], imageUrl: data2.imageUrl }
+            onImagesChange([...local])
+            ok++
+          }
+        }
+      } catch {}
+      await new Promise(r => setTimeout(r, 1500))
     }
     setGenerating(false)
     setGeneratingIdx(-1)
-    const successCount = images.filter((img) => img.imageUrl).length
-    toast.success(`이미지 ${successCount}/${images.length}장 생성 완료`)
+    toast.success(`이미지 ${ok}/${local.length}장 생성 완료`)
   }
 
   // 에디터 저장
@@ -329,7 +338,7 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
 
         {/* 에디터 다이얼로그 — 전체화면 + 좌우 네비게이션 */}
         <Dialog open={editingIdx >= 0} onOpenChange={(open) => !open && setEditingIdx(-1)}>
-          <DialogContent className="max-w-[95vw] w-[95vw] max-h-[95vh] h-[95vh] p-0 overflow-hidden">
+          <DialogContent className="max-w-[98vw] w-[98vw] max-h-[95vh] h-[95vh] p-0 overflow-hidden">
             <div className="flex flex-col h-full">
               {/* 상단 바 */}
               <div className="flex items-center justify-between px-6 py-3 border-b bg-white shrink-0">
