@@ -1,0 +1,252 @@
+'use client'
+
+import { useState } from 'react'
+import { toast } from 'sonner'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { ImageEditor } from './ImageEditor'
+import type { GeneratedImage } from '@/types/manuscript'
+
+interface ImageManagerProps {
+  manuscriptId: string
+  title: string
+  body: string
+  images: GeneratedImage[]
+  onImagesChange: (images: GeneratedImage[]) => void
+}
+
+export function ImageManager({ manuscriptId, title, body, images, onImagesChange }: ImageManagerProps) {
+  const [generating, setGenerating] = useState(false)
+  const [generatingIdx, setGeneratingIdx] = useState(-1)
+  const [editingIdx, setEditingIdx] = useState(-1)
+  const [promptsLoading, setPromptsLoading] = useState(false)
+  const [customCount, setCustomCount] = useState(8)
+
+  // 이미지 프롬프트 생성 (과장 역할)
+  async function handleGeneratePrompts(count: number) {
+    setPromptsLoading(true)
+    try {
+      const res = await fetch('/api/generate/image-prompt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, body, persona: {}, imageCount: count }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+
+      const newImages: GeneratedImage[] = data.images.map((img: {
+        position: number
+        promptKo: string
+        promptEn: string
+        imageType: string
+        processingText: { mainCopy: string; subCopy: string }
+      }) => ({
+        position: img.position,
+        promptKo: img.promptKo,
+        promptEn: img.promptEn,
+        imageType: img.imageType,
+        processingText: {
+          mainCopy: img.processingText?.mainCopy ?? '',
+          subCopy: img.processingText?.subCopy ?? '',
+        },
+      }))
+
+      onImagesChange(newImages)
+      toast.success(`${count}개 이미지 프롬프트 생성 완료`)
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : '프롬프트 생성 실패')
+    } finally {
+      setPromptsLoading(false)
+    }
+  }
+
+  // 개별 이미지 생성 (Gemini)
+  async function handleGenerateImage(idx: number) {
+    const img = images[idx]
+    if (!img?.promptEn) {
+      toast.error('프롬프트가 없습니다')
+      return
+    }
+
+    setGenerating(true)
+    setGeneratingIdx(idx)
+    try {
+      const res = await fetch('/api/generate/image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: img.promptEn,
+          imageType: img.imageType,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error)
+
+      const updated = [...images]
+      updated[idx] = { ...updated[idx], imageUrl: data.imageUrl }
+      onImagesChange(updated)
+      toast.success(`이미지 ${idx + 1} 생성 완료`)
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : '이미지 생성 실패')
+    } finally {
+      setGenerating(false)
+      setGeneratingIdx(-1)
+    }
+  }
+
+  // 전체 이미지 일괄 생성
+  async function handleGenerateAll() {
+    setGenerating(true)
+    for (let i = 0; i < images.length; i++) {
+      if (images[i].imageUrl) continue // 이미 생성된 건 스킵
+      setGeneratingIdx(i)
+      await handleGenerateImage(i)
+    }
+    setGenerating(false)
+    setGeneratingIdx(-1)
+  }
+
+  // 에디터 저장
+  function handleEditorSave(editedUrl: string) {
+    const updated = [...images]
+    updated[editingIdx] = { ...updated[editingIdx], imageUrl: editedUrl, edited: true }
+    onImagesChange(updated)
+    setEditingIdx(-1)
+    toast.success('이미지 편집 저장 완료')
+  }
+
+  // 이미지 재생성
+  async function handleRegenerate(idx: number) {
+    const img = images[idx]
+    const updated = [...images]
+    const history = img.regenerationHistory ?? []
+    if (img.imageUrl) {
+      history.push({
+        timestamp: new Date().toISOString(),
+        previousUrl: img.imageUrl,
+        reason: '재생성',
+      })
+    }
+    updated[idx] = { ...updated[idx], imageUrl: undefined, edited: false, regenerationHistory: history }
+    onImagesChange(updated)
+    await handleGenerateImage(idx)
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm font-medium text-gray-700">이미지 ({images.length}개)</CardTitle>
+          <div className="flex gap-2">
+            {images.length === 0 && (
+              <div className="flex items-center gap-1.5">
+                <Button size="sm" variant="outline" onClick={() => {
+                  const rand = Math.floor(Math.random() * 9) + 7 // 7~15
+                  handleGeneratePrompts(rand)
+                }} disabled={promptsLoading}>
+                  랜덤
+                </Button>
+                {[7, 10, 15].map((n) => (
+                  <Button key={n} size="sm" variant="outline" onClick={() => handleGeneratePrompts(n)} disabled={promptsLoading}>
+                    {n}장
+                  </Button>
+                ))}
+                <Input
+                  type="number"
+                  min={7}
+                  max={15}
+                  className="w-16 h-8 text-xs"
+                  value={customCount}
+                  onChange={(e) => setCustomCount(Math.max(7, Math.min(15, Number(e.target.value))))}
+                />
+                <Button size="sm" onClick={() => handleGeneratePrompts(customCount)} disabled={promptsLoading}>
+                  {promptsLoading ? '생성 중...' : '생성'}
+                </Button>
+              </div>
+            )}
+            {images.length > 0 && images.some((img) => !img.imageUrl) && (
+              <Button size="sm" onClick={handleGenerateAll} disabled={generating}>
+                {generating ? `${generatingIdx + 1}/${images.length} 생성 중...` : '전체 생성'}
+              </Button>
+            )}
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {images.length === 0 ? (
+          <p className="text-xs text-gray-400 text-center py-4">
+            이미지 프롬프트를 먼저 생성하세요 (7~15장, 랜덤 또는 직접 지정)
+          </p>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+            {images.map((img, i) => (
+              <div key={i} className="border rounded-lg overflow-hidden">
+                {/* 이미지 영역 */}
+                <div className="aspect-square bg-gray-100 relative">
+                  {img.imageUrl ? (
+                    <img src={img.imageUrl} alt={img.promptKo} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
+                      {generating && generatingIdx === i ? '생성 중...' : '미생성'}
+                    </div>
+                  )}
+                  {img.edited && (
+                    <Badge className="absolute top-1 right-1 text-[10px]" variant="secondary">편집됨</Badge>
+                  )}
+                </div>
+
+                {/* 정보 + 액션 */}
+                <div className="p-2 space-y-1.5">
+                  <p className="text-xs text-gray-700 line-clamp-2">{img.promptKo}</p>
+                  {img.processingText?.mainCopy && (
+                    <p className="text-[10px] text-blue-600">카피: {img.processingText.mainCopy}</p>
+                  )}
+                  <div className="flex gap-1">
+                    {!img.imageUrl ? (
+                      <Button size="sm" variant="outline" className="text-xs h-6 flex-1"
+                        onClick={() => handleGenerateImage(i)} disabled={generating}>
+                        생성
+                      </Button>
+                    ) : (
+                      <>
+                        <Button size="sm" variant="outline" className="text-xs h-6 flex-1"
+                          onClick={() => setEditingIdx(i)}>
+                          편집
+                        </Button>
+                        <Button size="sm" variant="ghost" className="text-xs h-6"
+                          onClick={() => handleRegenerate(i)} disabled={generating}>
+                          재생성
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* 에디터 다이얼로그 */}
+        <Dialog open={editingIdx >= 0} onOpenChange={(open) => !open && setEditingIdx(-1)}>
+          <DialogContent className="max-w-4xl">
+            <DialogHeader>
+              <DialogTitle>이미지 편집 — {editingIdx + 1}번</DialogTitle>
+            </DialogHeader>
+            {editingIdx >= 0 && images[editingIdx]?.imageUrl && (
+              <ImageEditor
+                imageUrl={images[editingIdx].imageUrl!}
+                initialMainCopy={images[editingIdx].processingText?.mainCopy}
+                initialSubCopy={images[editingIdx].processingText?.subCopy}
+                onSave={handleEditorSave}
+                onCancel={() => setEditingIdx(-1)}
+              />
+            )}
+          </DialogContent>
+        </Dialog>
+      </CardContent>
+    </Card>
+  )
+}
