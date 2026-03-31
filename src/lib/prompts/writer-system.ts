@@ -115,10 +115,27 @@ ${touchingPrompt ? `\n■ 글 톤 가이드: ${touchingPrompt}` : ''}
 ■ 브랜드 언급: ${resolve(VAR6_BRAND_MENTION, settings.variables.var6)}
 ■ 개인정보 공개: ${resolve(VAR8_PERSONAL_DISCLOSURE, settings.variables.var8)}
 
-■ 제목 스타일:
+■ 제목 규칙 (매우 중요):
 ${titleStructure ? `- 구조: ${titleStructure}` : '- 자유롭게'}
-- 더바다 위치: ${settings.titleSettings?.badaPosition === 'front' ? '제목 앞' : settings.titleSettings?.badaPosition === 'back' ? '제목 뒤' : '자연스럽게'}
 - 최대 60자 (공백 제외), 네이버 검색 최적화
+- "${brandInfo.name}" 키워드를 제목에 최소 1번 ~ 최대 2번 사용
+- 키워드 위치를 매번 다르게 배치하세요:
+  · 이번에는 ${['제목 맨 앞에', '제목 중간에', '제목 끝에', '자연스러운 위치에'][Math.floor(Math.random() * 4)]} "${brandInfo.name}" 배치
+  · 이번에는 ${Math.random() > 0.5 ? '1번' : '2번'} 사용
+- 이전 원고와 제목 구조/패턴이 겹치지 않도록 의식적으로 변화를 주세요
+- 예시처럼 쓰지 마세요: "더바다로 알아보는 ~", "더바다와 함께하는 ~" 같은 반복 패턴 금지
+
+■ 브랜드 키워드 규칙 (매우 중요):
+- "${brandInfo.name}" 키워드를 본문에 최소 5번 사용
+- 키워드를 본문 전체에 골고루 분포시키세요 (앞부분에만 몰리거나, 뒷부분에만 몰리면 안 됨)
+- 매번 다른 문맥에서 자연스럽게 사용하세요:
+  · 직접 언급: "~${brandInfo.name}을 통해~"
+  · 간접 언급: "~${brandInfo.name}이라는 서비스가~"
+  · 경험 속: "~${brandInfo.name}에서 확인해보니~"
+  · 추천형: "~${brandInfo.name} 한번 알아보세요~"
+  · 비교형: "~${brandInfo.name} 같은 곳에서~"
+- 같은 문장 구조로 반복 사용 금지 (예: "더바다를 통해~" 5번 반복 ❌)
+- 10번 이상은 사용하지 마세요
 
 ■ 인용구: 본문에 자연스럽게 0~3개 삽입 가능 (짧은 명언, 격언, 속담 등)
 
