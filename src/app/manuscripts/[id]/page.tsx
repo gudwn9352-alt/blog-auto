@@ -168,6 +168,49 @@ export default function ManuscriptDetailPage() {
     }
   }
 
+  async function handleExportGDrive() {
+    if (!manuscript) return
+    // Google Drive 토큰 확인
+    const token = localStorage.getItem('gdrive_token')
+    if (!token) {
+      // Google 로그인 필요
+      toast.info('Google 드라이브 연결이 필요합니다. 로그인 페이지로 이동합니다.')
+      window.location.href = '/api/auth/google'
+      return
+    }
+
+    try {
+      const mode = (manuscript as unknown as Record<string, unknown>).manuscriptMode as string ?? 'thirdparty'
+      const res = await fetch('/api/export/gdrive', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: manuscript.title,
+          body: manuscript.body,
+          brandName: selectedBrand?.name ?? '더바다',
+          manuscriptMode: mode,
+          images: manuscript.images?.map((img, i) => ({
+            imageUrl: img.imageUrl,
+            position: i,
+          })),
+          accessToken: token,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        if (res.status === 401) {
+          localStorage.removeItem('gdrive_token')
+          toast.error('Google 인증이 만료됐습니다. 다시 로그인해주세요.')
+          return
+        }
+        throw new Error(data.error)
+      }
+      toast.success(`구글 드라이브 내보내기 완료! (${data.folder}/${data.manuscriptFolder}, 이미지 ${data.uploadedImages}장)`)
+    } catch (e: unknown) {
+      toast.error(e instanceof Error ? e.message : '내보내기 실패')
+    }
+  }
+
   async function handleDelete() {
     if (!manuscript?.id) return
     if (!confirm('원고를 삭제하시겠습니까?')) return
@@ -236,6 +279,11 @@ export default function ManuscriptDetailPage() {
               <Button size="sm" variant="outline" onClick={handleDownloadDocx}>
                 다운로드
               </Button>
+              {manuscript.status === 'approved' && (
+                <Button size="sm" variant="outline" onClick={handleExportGDrive}>
+                  내보내기
+                </Button>
+              )}
               <Button size="sm" variant="outline" onClick={() => setEditing(true)}>
                 수정
               </Button>

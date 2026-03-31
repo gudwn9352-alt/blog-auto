@@ -157,6 +157,48 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
     await handleGenerateImage(idx)
   }
 
+  // 개별 이미지 다운로드
+  function handleDownloadImage(idx: number) {
+    const img = images[idx]
+    if (!img?.imageUrl) return
+    const a = document.createElement('a')
+    a.href = img.imageUrl
+    a.download = `이미지${idx + 1}.png`
+    a.click()
+  }
+
+  // 전체 이미지 ZIP 다운로드
+  async function handleDownloadAllImages() {
+    const JSZip = (await import('jszip')).default
+    const zip = new JSZip()
+
+    for (let i = 0; i < images.length; i++) {
+      const img = images[i]
+      if (!img?.imageUrl) continue
+
+      try {
+        let blob: Blob
+        if (img.imageUrl.startsWith('data:')) {
+          const res = await fetch(img.imageUrl)
+          blob = await res.blob()
+        } else {
+          const res = await fetch(img.imageUrl)
+          blob = await res.blob()
+        }
+        zip.file(`이미지${i + 1}.png`, blob)
+      } catch { /* skip */ }
+    }
+
+    const zipBlob = await zip.generateAsync({ type: 'blob' })
+    const url = URL.createObjectURL(zipBlob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `${title}_이미지.zip`
+    a.click()
+    URL.revokeObjectURL(url)
+    toast.success('이미지 ZIP 다운로드 완료')
+  }
+
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -192,6 +234,11 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
             {images.length > 0 && images.some((img) => !img.imageUrl) && (
               <Button size="sm" onClick={handleGenerateAll} disabled={generating}>
                 {generating ? `${generatingIdx + 1}/${images.length} 생성 중...` : '전체 생성'}
+              </Button>
+            )}
+            {images.length > 0 && images.some((img) => img.imageUrl) && (
+              <Button size="sm" variant="outline" onClick={handleDownloadAllImages}>
+                이미지 ZIP
               </Button>
             )}
           </div>
@@ -241,6 +288,10 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
                         <Button size="sm" variant="ghost" className="text-xs h-6"
                           onClick={() => handleRegenerate(i)} disabled={generating}>
                           재생성
+                        </Button>
+                        <Button size="sm" variant="ghost" className="text-xs h-6"
+                          onClick={() => handleDownloadImage(i)}>
+                          저장
                         </Button>
                       </>
                     )}

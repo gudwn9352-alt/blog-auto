@@ -25,6 +25,14 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    // Google Drive 토큰 저장 (OAuth 콜백에서 리다이렉트됨)
+    const params = new URLSearchParams(window.location.search)
+    const gdriveToken = params.get('gdrive_token')
+    if (gdriveToken) {
+      localStorage.setItem('gdrive_token', gdriveToken)
+      window.history.replaceState({}, '', '/dashboard')
+    }
+
     getManuscripts(selectedBrand?.id)
       .then(setManuscripts)
       .catch(() => {})
