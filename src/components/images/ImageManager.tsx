@@ -288,16 +288,30 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
             {images.map((img, i) => (
               <div key={i} className="border rounded-lg overflow-hidden">
                 {/* 이미지 영역 */}
-                <div className="aspect-square bg-gray-100 relative">
+                <div className="aspect-square bg-gray-100 relative overflow-hidden">
                   {img.imageUrl ? (
-                    <img src={img.imageUrl} alt={img.promptKo} className="w-full h-full object-cover" />
+                    <img src={img.imageUrl} alt={img.promptKo} className="w-full h-full object-cover transition-opacity duration-300" />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs">
-                      {generating && generatingIdx === i ? '생성 중...' : '미생성'}
+                    <div className="w-full h-full flex flex-col items-center justify-center text-gray-400 text-xs gap-2">
+                      {generating && generatingIdx === i ? (
+                        <>
+                          <div className="w-8 h-8 border-3 border-blue-400 border-t-transparent rounded-full animate-spin" />
+                          <span className="text-blue-500 font-medium">{i + 1}/{images.length} 생성 중</span>
+                        </>
+                      ) : generating && i > generatingIdx ? (
+                        <span className="text-gray-300">대기 중</span>
+                      ) : (
+                        <span>미생성</span>
+                      )}
                     </div>
                   )}
                   {img.edited && (
                     <Badge className="absolute top-1 right-1 text-[10px]" variant="secondary">편집됨</Badge>
+                  )}
+                  {generating && generatingIdx === i && img.imageUrl && (
+                    <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
+                      <div className="w-8 h-8 border-3 border-white border-t-transparent rounded-full animate-spin" />
+                    </div>
                   )}
                 </div>
 
