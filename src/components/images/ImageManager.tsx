@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { toast } from 'sonner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -24,6 +24,14 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
   const [editingIdx, setEditingIdx] = useState(-1)
   const [promptsLoading, setPromptsLoading] = useState(false)
   const [customCount, setCustomCount] = useState(8)
+  // 생성 중 실시간 표시용 로컬 이미지 상태
+  const [localImages, setLocalImages] = useState<GeneratedImage[] | null>(null)
+  const displayImages = localImages ?? images
+
+  function updateImages(updated: GeneratedImage[]) {
+    setLocalImages(updated)
+    onImagesChange(updated)
+  }
 
   // 이미지 프롬프트 생성 (과장 역할)
   async function handleGeneratePrompts(count: number) {
@@ -37,7 +45,7 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
 
-      const newImages: GeneratedImage[] = data.images.map((img: {
+      const newImages: GeneratedImage[] = data.displayImages.map((img: {
         position: number
         promptKo: string
         promptEn: string
@@ -54,7 +62,7 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
         },
       }))
 
-      onImagesChange(newImages)
+      updateImages(newImages)
       toast.success(`${count}개 이미지 프롬프트 생성 완료`)
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : '프롬프트 생성 실패')
@@ -65,7 +73,7 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
 
   // 개별 이미지 생성 (Gemini)
   async function handleGenerateImage(idx: number) {
-    const img = images[idx]
+    const img = displayImages[idx]
     if (!img?.promptEn) {
       toast.error('프롬프트가 없습니다')
       return
@@ -99,9 +107,9 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
         // 업로드 실패 시 Base64 그대로 사용
       }
 
-      const updated = [...images]
+      const updated = [...displayImages]
       updated[idx] = { ...updated[idx], imageUrl }
-      onImagesChange(updated)
+      updateImages(updated)
       if (data.model === 'gemini-2.5-flash-image') {
         toast.warning(`이미지 ${idx + 1} — Imagen 4.0 실패, Gemini 2.5 Flash로 대체 생성됨`)
       } else {
@@ -118,10 +126,9 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
   // 전체 이미지 일괄 생성
   async function handleGenerateAll() {
     setGenerating(true)
-    const local = [...images]
+    const local = [...displayImages]
     let ok = 0
     for (let i = 0; i < local.length; i++) {
-      // 이미 생성된 이미지도 재생성
       setGeneratingIdx(i)
       try {
         const res = await fetch('/api/generate/image', {
@@ -131,7 +138,7 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
         const data = await res.json()
         if (res.ok && data.imageUrl) {
           local[i] = { ...local[i], imageUrl: data.imageUrl }
-          onImagesChange([...local])
+          setLocalImages([...local])
           ok++
         } else {
           await new Promise(r => setTimeout(r, 2000))
@@ -142,13 +149,15 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
           const data2 = await res2.json()
           if (res2.ok && data2.imageUrl) {
             local[i] = { ...local[i], imageUrl: data2.imageUrl }
-            onImagesChange([...local])
+            setLocalImages([...local])
             ok++
           }
         }
       } catch {}
       await new Promise(r => setTimeout(r, 1500))
     }
+    // 최종 결과를 부모에 저장
+    onImagesChange([...local])
     setGenerating(false)
     setGeneratingIdx(-1)
     toast.success(`이미지 ${ok}/${local.length}장 생성 완료`)
@@ -167,9 +176,9 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
       if (uploadData.imageUrl) imageUrl = uploadData.imageUrl
     } catch { /* 업로드 실패 시 Base64 유지 */ }
 
-    const updated = [...images]
+    const updated = [...displayImages]
     updated[editingIdx] = { ...updated[editingIdx], imageUrl, edited: true }
-    onImagesChange(updated)
+    updateImages(updated)
     setEditingIdx(-1)
     toast.success('이미지 편집 저장 완료')
   }
@@ -187,7 +196,7 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
       })
     }
     updated[idx] = { ...updated[idx], imageUrl: undefined, edited: false, regenerationHistory: history }
-    onImagesChange(updated)
+    updateImages(updated)
     await handleGenerateImage(idx)
   }
 
@@ -237,9 +246,9 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
     <Card>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-sm font-medium text-gray-700">이미지 ({images.length}개)</CardTitle>
+          <CardTitle className="text-sm font-medium text-gray-700">이미지 ({displayImages.length}개)</CardTitle>
           <div className="flex gap-2">
-            {images.length === 0 && (
+            {displayImages.length === 0 && (
               <div className="flex items-center gap-1.5">
                 <Button size="sm" variant="outline" onClick={() => {
                   const rand = Math.floor(Math.random() * 9) + 7 // 7~15
@@ -267,10 +276,10 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
             )}
             {images.length > 0 && (
               <Button size="sm" onClick={handleGenerateAll} disabled={generating}>
-                {generating ? `${generatingIdx + 1}/${images.length} 생성 중...` : images.every((img) => img.imageUrl) ? '전체 재생성' : '전체 생성'}
+                {generating ? `${generatingIdx + 1}/${displayImages.length} 생성 중...` : displayImages.every((img) => img.imageUrl) ? '전체 재생성' : '전체 생성'}
               </Button>
             )}
-            {images.length > 0 && images.some((img) => img.imageUrl) && (
+            {images.length > 0 && displayImages.some((img) => img.imageUrl) && (
               <Button size="sm" variant="outline" onClick={handleDownloadAllImages}>
                 이미지 ZIP
               </Button>
@@ -279,13 +288,13 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
         </div>
       </CardHeader>
       <CardContent>
-        {images.length === 0 ? (
+        {displayImages.length === 0 ? (
           <p className="text-xs text-gray-400 text-center py-4">
             이미지 프롬프트를 먼저 생성하세요 (7~15장, 랜덤 또는 직접 지정)
           </p>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            {images.map((img, i) => (
+            {displayImages.map((img, i) => (
               <div key={i} className="border rounded-lg overflow-hidden">
                 {/* 이미지 영역 */}
                 <div className="aspect-square bg-gray-100 relative overflow-hidden">
@@ -296,7 +305,7 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
                       {generating && generatingIdx === i ? (
                         <>
                           <div className="w-8 h-8 border-3 border-blue-400 border-t-transparent rounded-full animate-spin" />
-                          <span className="text-blue-500 font-medium">{i + 1}/{images.length} 생성 중</span>
+                          <span className="text-blue-500 font-medium">{i + 1}/{displayImages.length} 생성 중</span>
                         </>
                       ) : generating && i > generatingIdx ? (
                         <span className="text-gray-300">대기 중</span>
@@ -365,7 +374,7 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 12L6 8L10 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                   </button>
                   <span className="text-sm font-bold text-gray-900">
-                    {editingIdx + 1} / {images.length}
+                    {editingIdx + 1} / {displayImages.length}
                   </span>
                   <button
                     onClick={() => setEditingIdx(Math.min(images.length - 1, editingIdx + 1))}
@@ -383,17 +392,17 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
 
               {/* 에디터 본체 */}
               <div className="flex-1 overflow-auto p-6">
-                {editingIdx >= 0 && images[editingIdx]?.imageUrl && (
+                {editingIdx >= 0 && displayImages[editingIdx]?.imageUrl && (
                   <ImageEditor
                     key={editingIdx}
-                    imageUrl={images[editingIdx].imageUrl!}
-                    initialMainCopy={images[editingIdx].processingText?.mainCopy}
-                    initialSubCopy={images[editingIdx].processingText?.subCopy}
+                    imageUrl={displayImages[editingIdx].imageUrl!}
+                    initialMainCopy={displayImages[editingIdx].processingText?.mainCopy}
+                    initialSubCopy={displayImages[editingIdx].processingText?.subCopy}
                     onSave={handleEditorSave}
                     onCancel={() => setEditingIdx(-1)}
                   />
                 )}
-                {editingIdx >= 0 && !images[editingIdx]?.imageUrl && (
+                {editingIdx >= 0 && !displayImages[editingIdx]?.imageUrl && (
                   <div className="flex items-center justify-center h-full text-gray-400">
                     이 이미지는 아직 생성되지 않았습니다
                   </div>
@@ -402,7 +411,7 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
 
               {/* 하단 썸네일 바 */}
               <div className="flex items-center gap-2 px-6 py-3 border-t bg-gray-50 overflow-x-auto shrink-0">
-                {images.map((img, i) => (
+                {displayImages.map((img, i) => (
                   <button
                     key={i}
                     onClick={() => setEditingIdx(i)}
