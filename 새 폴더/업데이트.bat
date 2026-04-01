@@ -1,15 +1,15 @@
 @echo off
 chcp 65001 >nul
-title 업데이트
+title Update
 
 echo.
-echo  업데이트 중...
+echo  Updating...
 echo.
 
 git pull
 call npm install --silent 2>nul
 
 echo.
-echo  완료! "실행.bat"을 실행하세요.
+echo  Done! Run "실행.bat" to start.
 echo.
 pause
