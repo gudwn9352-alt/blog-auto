@@ -8,9 +8,9 @@ echo  ================================
 echo.
 
 :: Block cloud folder execution
-echo %CD% | findstr /I /C:"Google Drive" /C:"GoogleDrive" /C:"OneDrive" /C:"Dropbox" >/dev/null
+echo %CD% | findstr /I /C:"Google Drive" /C:"GoogleDrive" /C:"Dropbox" >/dev/null
 if %errorlevel% equ 0 (
-    echo  [ERROR] Do NOT run from Google Drive / OneDrive / Dropbox!
+    echo  [ERROR] Do NOT run from Google Drive / Dropbox!
     echo.
     echo  Copy these 3 files to Desktop first:
     echo    - run.bat
@@ -90,3 +90,4 @@ echo.
 timeout /t 2 /nobreak >/dev/null
 start http://localhost:3000
 call npx next dev
+
