@@ -384,7 +384,7 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
                   max={15}
                   className="w-16 h-8 text-xs"
                   value={customCount}
-                  onChange={(e) => { const v = Number(e.target.value); if (v >= 1 && v <= 15) setCustomCount(v) }}
+                  onChange={(e) => setCustomCount(e.target.value)}
                 />
                 <Button size="sm" onClick={() => handleGeneratePrompts(Number(customCount) || 7)} disabled={promptsLoading}>
                   {promptsLoading ? '생성 중...' : '생성'}
