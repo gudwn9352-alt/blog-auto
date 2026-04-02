@@ -698,7 +698,7 @@ export default function GeneratePage() {
         size="lg"
         className="w-full"
         onClick={handleGenerate}
-        disabled={loading || !settings.category || !settings.brandId || (!isRandomCategory && !settings.typeId)}
+        disabled={loading}
       >
         {loading
           ? `${batchProgress.total}개 중 ${batchProgress.current}개 생성 중...`
