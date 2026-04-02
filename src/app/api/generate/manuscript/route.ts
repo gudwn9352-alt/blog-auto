@@ -54,7 +54,7 @@ ${fixMode.originalBody}
       : '지시서대로 블로그 원고를 작성해주세요.'
 
     const message = await writerClient.messages.create({
-      model: 'claude-sonnet-4-6',
+      model: process.env.CLAUDE_MODEL ?? 'claude-sonnet-4-6',
       max_tokens: 4096,
       system: systemPrompt,
       messages: [

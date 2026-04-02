@@ -105,7 +105,7 @@ export default function ManuscriptsPage() {
 
   return (
     <div className="p-6 max-w-4xl">
-      <PageHeader title="원고 목록" description={`총 ${manuscripts.length}개`} backHref="/dashboard">
+      <PageHeader title="원고 목록" description={`총 ${manuscripts.length}개 (승인 ${manuscripts.filter(m=>m.status==='approved').length}, 반려 ${manuscripts.filter(m=>m.status==='rejected').length}, 대기 ${manuscripts.filter(m=>m.status==='pending_review'||m.status==='needs_user').length})`} backHref="/dashboard">
         <Button
           variant="outline"
           size="sm"

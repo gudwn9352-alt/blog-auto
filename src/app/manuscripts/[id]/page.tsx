@@ -14,7 +14,6 @@ import { ImageManager } from '@/components/images/ImageManager'
 import { Progress } from '@/components/ui/progress'
 import { calculateSeoScore } from '@/lib/scoring/seo-score'
 import { calculateQualityScore } from '@/lib/scoring/quality-score'
-import { needsBrandApproval } from '@/lib/brand-track'
 import { useBrandStore } from '@/stores/brandStore'
 import type { Manuscript } from '@/types/manuscript'
 
@@ -596,16 +595,7 @@ export default function ManuscriptDetailPage() {
         )
       })()}
 
-      {/* CEO 승인 필요 알림 */}
-      {manuscript.category && manuscript.variables?.var6 &&
-        needsBrandApproval(manuscript.category, manuscript.variables.var6) && manuscript.status === 'approved' && (
-        <Card className="border-orange-200 bg-orange-50">
-          <CardContent className="pt-4 pb-3">
-            <p className="text-sm font-medium text-orange-700">브랜드 트랙 — CEO 승인 필요</p>
-            <p className="text-xs text-orange-600 mt-1">이 원고는 브랜드 노출이 강해서 CEO(브랜드 담당자) 승인이 필요합니다.</p>
-          </CardContent>
-        </Card>
-      )}
+      
 
       {/* 수정 히스토리 */}
       {manuscript.editHistory && manuscript.editHistory.length > 0 && (

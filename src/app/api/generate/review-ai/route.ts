@@ -163,7 +163,7 @@ export async function POST(req: Request) {
     const systemPrompt = buildReviewSystemPrompt(persona ?? {})
 
     const message = await reviewerClient.messages.create({
-      model: 'claude-sonnet-4-6',
+      model: process.env.CLAUDE_MODEL ?? 'claude-sonnet-4-6',
       max_tokens: 2048,
       system: systemPrompt,
       messages: [

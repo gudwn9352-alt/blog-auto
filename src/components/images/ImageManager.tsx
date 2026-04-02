@@ -125,17 +125,23 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
     }
   }
 
+  // 취소 플래그
+  const cancelRef = { current: false }
+
   // 전체 이미지 일괄 생성
   async function handleGenerateAll() {
     const hasExisting = displayImages.some((img) => img.imageUrl)
     if (hasExisting) {
-      const confirmed = confirm('이미 생성된 이미지가 있어요. 재생성 하시겠습니까?')
-      if (!confirmed) return
+      if (!confirm('이미 생성된 이미지가 있어요. 재생성 하시겠습니까?')) return
     }
+    cancelRef.current = false
     setGenerating(true)
     const local = [...displayImages]
     let ok = 0
+    const startTime = Date.now()
+
     for (let i = 0; i < local.length; i++) {
+      if (cancelRef.current) { toast.info('이미지 생성이 취소되었습니다'); break }
       setGeneratingIdx(i)
       try {
         const res = await fetch('/api/generate/image', {
@@ -146,10 +152,10 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
         if (res.ok && data.imageUrl) {
           local[i] = { ...local[i], imageUrl: data.imageUrl }
           setLocalImages([...local])
-          onImagesChange([...local]) // 매 이미지마다 Firestore 저장
           ok++
         } else {
           await new Promise(r => setTimeout(r, 2000))
+          if (cancelRef.current) break
           const res2 = await fetch('/api/generate/image', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ prompt: local[i].promptEn, imageType: local[i].imageType, manuscriptId, imageIndex: i }),
@@ -158,18 +164,22 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
           if (res2.ok && data2.imageUrl) {
             local[i] = { ...local[i], imageUrl: data2.imageUrl }
             setLocalImages([...local])
-            onImagesChange([...local]) // 매 이미지마다 Firestore 저장
             ok++
           }
         }
       } catch {}
       await new Promise(r => setTimeout(r, 1500))
     }
-    // 최종 결과를 부모에 저장
+    // 최종 1번만 Firestore 저장
     onImagesChange([...local])
     setGenerating(false)
     setGeneratingIdx(-1)
-    toast.success(`이미지 ${ok}/${local.length}장 생성 완료`)
+    const elapsed = Math.round((Date.now() - startTime) / 1000)
+    toast.success(`이미지 ${ok}/${local.length}장 생성 완료 (${elapsed}초)`)
+  }
+
+  function handleCancelGenerate() {
+    cancelRef.current = true
   }
 
   // 에디터 저장 — 편집된 이미지를 서버에 파일로 저장
@@ -379,10 +389,16 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
                 </Button>
               </div>
             )}
-            {images.length > 0 && (
-              <Button size="sm" onClick={handleGenerateAll} disabled={generating}>
-                {generating ? `${generatingIdx + 1}/${displayImages.length} 생성 중...` : displayImages.every((img) => img.imageUrl) ? '전체 재생성' : '전체 생성'}
+            {images.length > 0 && !generating && (
+              <Button size="sm" onClick={handleGenerateAll}>
+                {displayImages.every((img) => img.imageUrl) ? '전체 재생성' : '전체 생성'}
               </Button>
+            )}
+            {generating && (
+              <>
+                <span className="text-xs text-gray-500">{generatingIdx + 1}/{displayImages.length} (~{Math.round((displayImages.length - generatingIdx) * 8)}초)</span>
+                <Button size="sm" variant="destructive" onClick={handleCancelGenerate}>취소</Button>
+              </>
             )}
             {images.length > 0 && displayImages.some((img) => img.imageUrl) && (
               <>

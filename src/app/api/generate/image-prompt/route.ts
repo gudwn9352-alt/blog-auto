@@ -89,7 +89,7 @@ ${body}
 ${persona ? `\n[페르소나]\n${persona}` : ''}`
 
     const message = await client.messages.create({
-      model: 'claude-sonnet-4-6',
+      model: process.env.CLAUDE_MODEL ?? 'claude-sonnet-4-6',
       max_tokens: 4096,
       system: systemPrompt,
       messages: [{ role: 'user', content: userMessage }],

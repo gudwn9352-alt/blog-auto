@@ -28,7 +28,6 @@ const navGroups = [
   {
     label: '도움말',
     items: [
-      { href: '/relations', label: '관계성 보기', icon: '🔗' },
       { href: '/guide', label: '이용 방법', icon: '📖' },
     ],
   },
@@ -40,6 +39,7 @@ export function Sidebar() {
   const { selectedBrand, clearBrand } = useBrandStore()
 
   function handleChangeBrand() {
+    if (!confirm('브랜드를 변경하시겠습니까?')) return
     clearBrand()
     router.push('/')
   }
