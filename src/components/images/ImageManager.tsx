@@ -45,7 +45,9 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
 
-      const newImages: GeneratedImage[] = data.images.map((img: {
+      const rawImages = data.images ?? data.displayImages ?? []
+      if (!rawImages || !Array.isArray(rawImages)) { throw new Error('이미지 프롬프트 응답 형식 오류') }
+      const newImages: GeneratedImage[] = rawImages.map((img: {
         position: number
         promptKo: string
         promptEn: string
