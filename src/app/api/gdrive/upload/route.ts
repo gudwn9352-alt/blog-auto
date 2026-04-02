@@ -61,7 +61,22 @@ export async function POST(req: Request) {
         }
       }
 
+      // 0.백업 폴더에 날짜별 백업
+      try {
+        const now = new Date()
+        const d = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`
+        const envContent = readFileSync(join(projectRoot, '.env.local'))
+        await uploadFile(`backup_${d}.env.local`, envContent, 'text/plain', BACKUP_FOLDER_ID)
+        results.push({ name: `backup_${d}`, success: true, id: 'backup' })
+      } catch {}
+
       return NextResponse.json({ success: true, results })
+    }
+
+    if (action === 'backup') {
+      const buf = content ? Buffer.from(content, 'base64') : Buffer.from('empty')
+      const id = await uploadFile(fileName, buf, getMimeType(fileName), BACKUP_FOLDER_ID)
+      return NextResponse.json({ success: true, fileId: id })
     }
 
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
