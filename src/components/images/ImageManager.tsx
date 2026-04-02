@@ -1,4 +1,4 @@
-'use client'
+﻿'use client'
 
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -24,7 +24,7 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
   const [editingIdx, setEditingIdx] = useState(-1)
   const [promptsLoading, setPromptsLoading] = useState(false)
   const [customCount, setCustomCount] = useState(8)
-  // 생성 중 실시간 표시용 로컬 이미지 상태
+  // ?앹꽦 以??ㅼ떆媛??쒖떆??濡쒖뺄 ?대?吏 ?곹깭
   const [localImages, setLocalImages] = useState<GeneratedImage[] | null>(null)
   const displayImages = localImages ?? images
 
@@ -33,7 +33,7 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
     onImagesChange(updated)
   }
 
-  // 이미지 프롬프트 생성 (과장 역할)
+  // ?대?吏 ?꾨＼?꾪듃 ?앹꽦 (怨쇱옣 ??븷)
   async function handleGeneratePrompts(count: number) {
     setPromptsLoading(true)
     try {
@@ -45,7 +45,7 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
 
-      const newImages: GeneratedImage[] = data.displayImages.map((img: {
+      const newImages: GeneratedImage[] = data.images.map((img: {
         position: number
         promptKo: string
         promptEn: string
@@ -63,19 +63,19 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
       }))
 
       updateImages(newImages)
-      toast.success(`${count}개 이미지 프롬프트 생성 완료`)
+      toast.success(`${count}媛??대?吏 ?꾨＼?꾪듃 ?앹꽦 ?꾨즺`)
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : '프롬프트 생성 실패')
+      toast.error(e instanceof Error ? e.message : '?꾨＼?꾪듃 ?앹꽦 ?ㅽ뙣')
     } finally {
       setPromptsLoading(false)
     }
   }
 
-  // 개별 이미지 생성 (Gemini)
+  // 媛쒕퀎 ?대?吏 ?앹꽦 (Gemini)
   async function handleGenerateImage(idx: number) {
     const img = displayImages[idx]
     if (!img?.promptEn) {
-      toast.error('프롬프트가 없습니다')
+      toast.error('?꾨＼?꾪듃媛 ?놁뒿?덈떎')
       return
     }
 
@@ -95,8 +95,7 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
 
-      // 서버 API로 업로드 → URL만 Firestore에 저장
-      let imageUrl = data.imageUrl
+      // ?쒕쾭 API濡??낅줈????URL留?Firestore?????      let imageUrl = data.imageUrl
       try {
         const uploadRes = await fetch('/api/upload/image', {
           method: 'POST',
@@ -106,33 +105,32 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
         const uploadData = await uploadRes.json()
         if (uploadData.imageUrl) imageUrl = uploadData.imageUrl
       } catch {
-        // 업로드 실패 시 Base64 그대로 사용
+        // ?낅줈???ㅽ뙣 ??Base64 洹몃?濡??ъ슜
       }
 
       const updated = [...displayImages]
       updated[idx] = { ...updated[idx], imageUrl }
       updateImages(updated)
       if (data.model === 'gemini-2.5-flash-image') {
-        toast.warning(`이미지 ${idx + 1} — Imagen 4.0 실패, Gemini 2.5 Flash로 대체 생성됨`)
+        toast.warning(`?대?吏 ${idx + 1} ??Imagen 4.0 ?ㅽ뙣, Gemini 2.5 Flash濡??泥??앹꽦??)
       } else {
-        toast.success(`이미지 ${idx + 1} 생성 완료 (Imagen 4.0)`)
+        toast.success(`?대?吏 ${idx + 1} ?앹꽦 ?꾨즺 (Imagen 4.0)`)
       }
     } catch (e: unknown) {
-      toast.error(e instanceof Error ? e.message : '이미지 생성 실패')
+      toast.error(e instanceof Error ? e.message : '?대?吏 ?앹꽦 ?ㅽ뙣')
     } finally {
       setGenerating(false)
       setGeneratingIdx(-1)
     }
   }
 
-  // 취소 플래그
-  const cancelRef = { current: false }
+  // 痍⑥냼 ?뚮옒洹?  const cancelRef = { current: false }
 
-  // 전체 이미지 일괄 생성
+  // ?꾩껜 ?대?吏 ?쇨큵 ?앹꽦
   async function handleGenerateAll() {
     const hasExisting = displayImages.some((img) => img.imageUrl)
     if (hasExisting) {
-      if (!confirm('이미 생성된 이미지가 있어요. 재생성 하시겠습니까?')) return
+      if (!confirm('?대? ?앹꽦???대?吏媛 ?덉뼱?? ?ъ깮???섏떆寃좎뒿?덇퉴?')) return
     }
     cancelRef.current = false
     setGenerating(true)
@@ -141,7 +139,7 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
     const startTime = Date.now()
 
     for (let i = 0; i < local.length; i++) {
-      if (cancelRef.current) { toast.info('이미지 생성이 취소되었습니다'); break }
+      if (cancelRef.current) { toast.info('?대?吏 ?앹꽦??痍⑥냼?섏뿀?듬땲??); break }
       setGeneratingIdx(i)
       try {
         const res = await fetch('/api/generate/image', {
@@ -170,42 +168,39 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
       } catch {}
       await new Promise(r => setTimeout(r, 1500))
     }
-    // 최종 1번만 Firestore 저장
-    onImagesChange([...local])
+    // 理쒖쥌 1踰덈쭔 Firestore ???    onImagesChange([...local])
     setGenerating(false)
     setGeneratingIdx(-1)
     const elapsed = Math.round((Date.now() - startTime) / 1000)
-    toast.success(`이미지 ${ok}/${local.length}장 생성 완료 (${elapsed}초)`)
+    toast.success(`?대?吏 ${ok}/${local.length}???앹꽦 ?꾨즺 (${elapsed}珥?`)
   }
 
   function handleCancelGenerate() {
     cancelRef.current = true
   }
 
-  // 에디터 저장 — 편집된 이미지를 서버에 파일로 저장
-  async function handleEditorSave(editedUrl: string) {
+  // ?먮뵒????????몄쭛???대?吏瑜??쒕쾭???뚯씪濡????  async function handleEditorSave(editedUrl: string) {
     let imageUrl = editedUrl
     try {
-      // 편집된 이미지를 서버에 파일로 저장
-      const uploadRes = await fetch('/api/upload/image', {
+      // ?몄쭛???대?吏瑜??쒕쾭???뚯씪濡????      const uploadRes = await fetch('/api/upload/image', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ manuscriptId, imageIndex: editingIdx, dataUrl: editedUrl }),
       })
       const uploadData = await uploadRes.json()
       if (uploadData.imageUrl) imageUrl = uploadData.imageUrl
-    } catch { /* 실패 시 Base64 유지 */ }
+    } catch { /* ?ㅽ뙣 ??Base64 ?좎? */ }
 
     const updated = [...displayImages]
     updated[editingIdx] = { ...updated[editingIdx], imageUrl, edited: true }
     updateImages(updated)
     setEditingIdx(-1)
-    toast.success('이미지 편집 저장 완료')
+    toast.success('?대?吏 ?몄쭛 ????꾨즺')
   }
 
-  // 전체 편집 완료 — 모든 이미지에 텍스트 자동 합성
+  // ?꾩껜 ?몄쭛 ?꾨즺 ??紐⑤뱺 ?대?吏???띿뒪???먮룞 ?⑹꽦
   async function handleApplyAllText() {
-    const confirmed = confirm('모든 이미지에 텍스트(메인 카피, 보조 문구)를 자동 합성합니다.\n기존 편집은 덮어씌워집니다. 진행하시겠습니까?')
+    const confirmed = confirm('紐⑤뱺 ?대?吏???띿뒪??硫붿씤 移댄뵾, 蹂댁“ 臾멸뎄)瑜??먮룞 ?⑹꽦?⑸땲??\n湲곗〈 ?몄쭛? ??뼱?뚯썙吏묐땲?? 吏꾪뻾?섏떆寃좎뒿?덇퉴?')
     if (!confirmed) return
 
     setGenerating(true)
@@ -220,7 +215,7 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
       setGeneratingIdx(i)
 
       try {
-        // Canvas에서 텍스트 합성
+        // Canvas?먯꽌 ?띿뒪???⑹꽦
         const canvas = document.createElement('canvas')
         const ctx = canvas.getContext('2d')
         if (!ctx) continue
@@ -229,31 +224,30 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
         canvas.width = size
         canvas.height = size
 
-        // 배경 이미지 로드
+        // 諛곌꼍 ?대?吏 濡쒕뱶
         const bgImg = await loadImage(img.imageUrl)
         ctx.drawImage(bgImg, 0, 0, size, size)
 
-        // 하단 오버레이
+        // ?섎떒 ?ㅻ쾭?덉씠
         if (img.processingText?.mainCopy || img.processingText?.subCopy) {
           ctx.fillStyle = 'rgba(0,0,0,0.45)'
           ctx.fillRect(0, size - 180, size, 180)
         }
 
-        // 텍스트 그림자
-        ctx.shadowColor = 'rgba(0,0,0,0.7)'
+        // ?띿뒪??洹몃┝??        ctx.shadowColor = 'rgba(0,0,0,0.7)'
         ctx.shadowBlur = 6
         ctx.shadowOffsetX = 2
         ctx.shadowOffsetY = 2
         ctx.textAlign = 'center'
 
-        // 메인 카피
+        // 硫붿씤 移댄뵾
         if (img.processingText?.mainCopy) {
           ctx.fillStyle = '#ffffff'
           ctx.font = 'bold 44px "Noto Sans KR", sans-serif'
           ctx.fillText(img.processingText.mainCopy, size / 2, size - 110, size - 80)
         }
 
-        // 보조 문구
+        // 蹂댁“ 臾멸뎄
         if (img.processingText?.subCopy) {
           ctx.fillStyle = '#dddddd'
           ctx.font = '22px "Noto Sans KR", sans-serif'
@@ -264,8 +258,7 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
 
         const editedUrl = canvas.toDataURL('image/png')
 
-        // 서버에 파일 저장
-        let imageUrl = editedUrl
+        // ?쒕쾭???뚯씪 ???        let imageUrl = editedUrl
         try {
           const uploadRes = await fetch('/api/upload/image', {
             method: 'POST',
@@ -285,7 +278,7 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
     onImagesChange([...local])
     setGenerating(false)
     setGeneratingIdx(-1)
-    toast.success(`${ok}장 텍스트 합성 완료`)
+    toast.success(`${ok}???띿뒪???⑹꽦 ?꾨즺`)
   }
 
   function loadImage(src: string): Promise<HTMLImageElement> {
@@ -298,8 +291,7 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
     })
   }
 
-  // 이미지 재생성
-  async function handleRegenerate(idx: number) {
+  // ?대?吏 ?ъ깮??  async function handleRegenerate(idx: number) {
     const img = images[idx]
     const updated = [...images]
     const history = img.regenerationHistory ?? []
@@ -307,7 +299,7 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
       history.push({
         timestamp: new Date().toISOString(),
         previousUrl: img.imageUrl,
-        reason: '재생성',
+        reason: '?ъ깮??,
       })
     }
     updated[idx] = { ...updated[idx], imageUrl: undefined, edited: false, regenerationHistory: history }
@@ -315,17 +307,17 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
     await handleGenerateImage(idx)
   }
 
-  // 개별 이미지 다운로드
+  // 媛쒕퀎 ?대?吏 ?ㅼ슫濡쒕뱶
   function handleDownloadImage(idx: number) {
     const img = images[idx]
     if (!img?.imageUrl) return
     const a = document.createElement('a')
     a.href = img.imageUrl
-    a.download = `이미지${idx + 1}.png`
+    a.download = `?대?吏${idx + 1}.png`
     a.click()
   }
 
-  // 전체 이미지 ZIP 다운로드
+  // ?꾩껜 ?대?吏 ZIP ?ㅼ슫濡쒕뱶
   async function handleDownloadAllImages() {
     const JSZip = (await import('jszip')).default
     const zip = new JSZip()
@@ -343,7 +335,7 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
           const res = await fetch(img.imageUrl)
           blob = await res.blob()
         }
-        zip.file(`이미지${i + 1}.png`, blob)
+        zip.file(`?대?吏${i + 1}.png`, blob)
       } catch { /* skip */ }
     }
 
@@ -351,17 +343,17 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
     const url = URL.createObjectURL(zipBlob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `${title}_이미지.zip`
+    a.download = `${title}_?대?吏.zip`
     a.click()
     URL.revokeObjectURL(url)
-    toast.success('이미지 ZIP 다운로드 완료')
+    toast.success('?대?吏 ZIP ?ㅼ슫濡쒕뱶 ?꾨즺')
   }
 
   return (
     <Card>
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-sm font-medium text-gray-700">이미지 ({displayImages.length}개)</CardTitle>
+          <CardTitle className="text-sm font-medium text-gray-700">?대?吏 ({displayImages.length}媛?</CardTitle>
           <div className="flex gap-2">
             {displayImages.length === 0 && (
               <div className="flex items-center gap-1.5">
@@ -369,12 +361,11 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
                   const rand = Math.floor(Math.random() * 9) + 7 // 7~15
                   handleGeneratePrompts(rand)
                 }} disabled={promptsLoading}>
-                  랜덤
+                  ?쒕뜡
                 </Button>
                 {[7, 10, 15].map((n) => (
                   <Button key={n} size="sm" variant="outline" onClick={() => handleGeneratePrompts(n)} disabled={promptsLoading}>
-                    {n}장
-                  </Button>
+                    {n}??                  </Button>
                 ))}
                 <Input
                   type="number"
@@ -385,28 +376,28 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
                   onChange={(e) => setCustomCount(Math.max(7, Math.min(15, Number(e.target.value))))}
                 />
                 <Button size="sm" onClick={() => handleGeneratePrompts(customCount)} disabled={promptsLoading}>
-                  {promptsLoading ? '생성 중...' : '생성'}
+                  {promptsLoading ? '?앹꽦 以?..' : '?앹꽦'}
                 </Button>
               </div>
             )}
             {images.length > 0 && !generating && (
               <Button size="sm" onClick={handleGenerateAll}>
-                {displayImages.every((img) => img.imageUrl) ? '전체 재생성' : '전체 생성'}
+                {displayImages.every((img) => img.imageUrl) ? '?꾩껜 ?ъ깮?? : '?꾩껜 ?앹꽦'}
               </Button>
             )}
             {generating && (
               <>
-                <span className="text-xs text-gray-500">{generatingIdx + 1}/{displayImages.length} (~{Math.round((displayImages.length - generatingIdx) * 8)}초)</span>
-                <Button size="sm" variant="destructive" onClick={handleCancelGenerate}>취소</Button>
+                <span className="text-xs text-gray-500">{generatingIdx + 1}/{displayImages.length} (~{Math.round((displayImages.length - generatingIdx) * 8)}珥?</span>
+                <Button size="sm" variant="destructive" onClick={handleCancelGenerate}>痍⑥냼</Button>
               </>
             )}
             {images.length > 0 && displayImages.some((img) => img.imageUrl) && (
               <>
                 <Button size="sm" variant="outline" onClick={handleApplyAllText} disabled={generating}>
-                  전체 텍스트 합성
+                  ?꾩껜 ?띿뒪???⑹꽦
                 </Button>
                 <Button size="sm" variant="outline" onClick={handleDownloadAllImages}>
-                  이미지 ZIP
+                  ?대?吏 ZIP
                 </Button>
               </>
             )}
@@ -416,13 +407,13 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
       <CardContent>
         {displayImages.length === 0 ? (
           <p className="text-xs text-gray-400 text-center py-4">
-            이미지 프롬프트를 먼저 생성하세요 (7~15장, 랜덤 또는 직접 지정)
+            ?대?吏 ?꾨＼?꾪듃瑜?癒쇱? ?앹꽦?섏꽭??(7~15?? ?쒕뜡 ?먮뒗 吏곸젒 吏??
           </p>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
             {displayImages.map((img, i) => (
               <div key={i} className="border rounded-lg overflow-hidden">
-                {/* 이미지 영역 */}
+                {/* ?대?吏 ?곸뿭 */}
                 <div className="aspect-square bg-gray-100 relative overflow-hidden">
                   {img.imageUrl ? (
                     <img src={img.imageUrl} alt={img.promptKo} className="w-full h-full object-cover transition-opacity duration-300" />
@@ -431,17 +422,17 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
                       {generating && generatingIdx === i ? (
                         <>
                           <div className="w-8 h-8 border-3 border-blue-400 border-t-transparent rounded-full animate-spin" />
-                          <span className="text-blue-500 font-medium">{i + 1}/{displayImages.length} 생성 중</span>
+                          <span className="text-blue-500 font-medium">{i + 1}/{displayImages.length} ?앹꽦 以?/span>
                         </>
                       ) : generating && i > generatingIdx ? (
-                        <span className="text-gray-300">대기 중</span>
+                        <span className="text-gray-300">?湲?以?/span>
                       ) : (
-                        <span>미생성</span>
+                        <span>誘몄깮??/span>
                       )}
                     </div>
                   )}
                   {img.edited && (
-                    <Badge className="absolute top-1 right-1 text-[10px]" variant="secondary">편집됨</Badge>
+                    <Badge className="absolute top-1 right-1 text-[10px]" variant="secondary">?몄쭛??/Badge>
                   )}
                   {generating && generatingIdx === i && img.imageUrl && (
                     <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
@@ -450,32 +441,30 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
                   )}
                 </div>
 
-                {/* 정보 + 액션 */}
+                {/* ?뺣낫 + ?≪뀡 */}
                 <div className="p-2 space-y-1.5">
                   <p className="text-xs text-gray-700 line-clamp-2">{img.promptKo}</p>
                   {img.processingText?.mainCopy && (
-                    <p className="text-[10px] text-blue-600">카피: {img.processingText.mainCopy}</p>
+                    <p className="text-[10px] text-blue-600">移댄뵾: {img.processingText.mainCopy}</p>
                   )}
                   <div className="flex gap-1">
                     {!img.imageUrl ? (
                       <Button size="sm" variant="outline" className="text-xs h-6 flex-1"
                         onClick={() => handleGenerateImage(i)} disabled={generating}>
-                        생성
+                        ?앹꽦
                       </Button>
                     ) : (
                       <>
                         <Button size="sm" variant="outline" className="text-xs h-6 flex-1"
                           onClick={() => setEditingIdx(i)}>
-                          편집
+                          ?몄쭛
                         </Button>
                         <Button size="sm" variant="ghost" className="text-xs h-6"
                           onClick={() => handleRegenerate(i)} disabled={generating}>
-                          재생성
-                        </Button>
+                          ?ъ깮??                        </Button>
                         <Button size="sm" variant="ghost" className="text-xs h-6"
                           onClick={() => handleDownloadImage(i)}>
-                          저장
-                        </Button>
+                          ???                        </Button>
                       </>
                     )}
                   </div>
@@ -485,11 +474,11 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
           </div>
         )}
 
-        {/* 에디터 다이얼로그 — 전체화면 + 좌우 네비게이션 */}
+        {/* ?먮뵒???ㅼ씠?쇰줈洹????꾩껜?붾㈃ + 醫뚯슦 ?ㅻ퉬寃뚯씠??*/}
         <Dialog open={editingIdx >= 0} onOpenChange={(open) => !open && setEditingIdx(-1)}>
           <DialogContent className="p-0 overflow-hidden" style={{ maxWidth: '98vw', width: '98vw', maxHeight: '95vh', height: '95vh' }}>
             <div className="flex flex-col h-full">
-              {/* 상단 바 */}
+              {/* ?곷떒 諛?*/}
               <div className="flex items-center justify-between px-6 py-3 border-b bg-white shrink-0">
                 <div className="flex items-center gap-4">
                   <button
@@ -510,13 +499,13 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
                     <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 4L10 8L6 12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>
                   </button>
                 </div>
-                <DialogTitle className="text-sm text-gray-600">이미지 편집</DialogTitle>
+                <DialogTitle className="text-sm text-gray-600">?대?吏 ?몄쭛</DialogTitle>
                 <div className="flex gap-2">
-                  <Button size="sm" variant="outline" onClick={() => setEditingIdx(-1)}>닫기</Button>
+                  <Button size="sm" variant="outline" onClick={() => setEditingIdx(-1)}>?リ린</Button>
                 </div>
               </div>
 
-              {/* 에디터 본체 */}
+              {/* ?먮뵒??蹂몄껜 */}
               <div className="flex-1 overflow-auto p-6">
                 {editingIdx >= 0 && displayImages[editingIdx]?.imageUrl && (
                   <ImageEditor
@@ -530,12 +519,11 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
                 )}
                 {editingIdx >= 0 && !displayImages[editingIdx]?.imageUrl && (
                   <div className="flex items-center justify-center h-full text-gray-400">
-                    이 이미지는 아직 생성되지 않았습니다
-                  </div>
+                    ???대?吏???꾩쭅 ?앹꽦?섏? ?딆븯?듬땲??                  </div>
                 )}
               </div>
 
-              {/* 하단 썸네일 바 */}
+              {/* ?섎떒 ?몃꽕??諛?*/}
               <div className="flex items-center gap-2 px-6 py-3 border-t bg-gray-50 overflow-x-auto shrink-0">
                 {displayImages.map((img, i) => (
                   <button
@@ -560,3 +548,4 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
     </Card>
   )
 }
+
