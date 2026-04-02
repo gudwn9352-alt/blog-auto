@@ -55,15 +55,15 @@ if not exist "blog-auto" (
 )
 cd blog-auto
 
-if not exist ".env.local" (
-    if exist "..\.env.local" (
-        copy "..\.env.local" ".env.local" >nul
+if exist "..\.env.local" (
+    copy "..\.env.local" ".env.local" >nul
+    echo  .env.local updated!
         echo  .env.local copied!
-    ) else (
-        echo  [ERROR] .env.local file missing.
-        pause
-        exit
-    )
+)
+if not exist ".env.local" (
+    echo  [ERROR] .env.local file missing.
+    pause
+    exit
 )
 
 if not exist "node_modules" (
