@@ -1,6 +1,12 @@
 @echo off
-echo Updating...
+title Update
+echo.
+echo  Updating...
+echo.
+if exist "blog-auto" ( cd blog-auto )
 git pull
-call npm install --silent 2>/dev/null
-echo Done!
+call npm install >nul 2>nul
+echo.
+echo  Done! Run "run.bat" to start.
+echo.
 pause
