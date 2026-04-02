@@ -3,6 +3,9 @@
 # generated images
 /public/generated-images
 
+# google drive token
+.gdrive-token.json
+
 # dependencies
 /node_modules
 /.pnp
