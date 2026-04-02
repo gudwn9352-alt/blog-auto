@@ -23,7 +23,7 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
   const [generatingIdx, setGeneratingIdx] = useState(-1)
   const [editingIdx, setEditingIdx] = useState(-1)
   const [promptsLoading, setPromptsLoading] = useState(false)
-  const [customCount, setCustomCount] = useState(8)
+  const [customCount, setCustomCount] = useState(7)
   // 생성 중 실시간 표시용 로컬 이미지 상태
   const [localImages, setLocalImages] = useState<GeneratedImage[] | null>(null)
   const displayImages = localImages ?? images
@@ -382,7 +382,7 @@ export function ImageManager({ manuscriptId, title, body, images, onImagesChange
                   max={15}
                   className="w-16 h-8 text-xs"
                   value={customCount}
-                  onChange={(e) => setCustomCount(Math.max(7, Math.min(15, Number(e.target.value))))}
+                  onChange={(e) => { const v = Number(e.target.value); if (v >= 1 && v <= 15) setCustomCount(v) }}
                 />
                 <Button size="sm" onClick={() => handleGeneratePrompts(customCount)} disabled={promptsLoading}>
                   {promptsLoading ? '생성 중...' : '생성'}
